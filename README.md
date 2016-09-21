@@ -9,7 +9,7 @@ Simply download the code to the desired location and add the `Y2F` folder to you
 
 The Y2F interface requires a working YALMIP installation. See [http://users.isy.liu.se/johanl/yalmip/pmwiki.php?n=Tutorials.Installation](http://users.isy.liu.se/johanl/yalmip/pmwiki.php?n=Tutorials.Installation) for instructions on how to install YALMIP.
 
-The code has been tested with YALMIP release 20150919. Older version might work but have not been tested.
+The code has been tested with YALMIP release 20150919. Older versions might work but have not been tested.
 
 ## Example Usage
 
