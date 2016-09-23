@@ -62,6 +62,7 @@ end
 
 %% Create controller object (generates code)
 codeoptions = getOptions('FORCESsolver');
+codeoptions.printlevel = 0; % switch off FORCES printing (default is 2)
 controller = optimizerFORCES(const, cost, codeoptions, x{1}, u{1});
 
 
@@ -72,15 +73,20 @@ X = zeros(nx,kmax+1); X(:,1) = x1;
 U = zeros(nu,kmax);
 problem.z1 = zeros(2*nx,1);
 for k = 1:kmax
-    %problem.minusA_times_x0 = -A*X(:,k);
-    %eval(sprintf('[solverout,exitflag,info] = %s(problem);', codeoptions.name));
+    
+    % Evaluate controller function for parameters
     [U(:,k),exitflag,info] = controller{ X(:,k) };
+    
+    % Always check the exitflag in case something went wrong in the solver
     if( exitflag == 1 )
-        solvetime(k) = info.solvetime;
+        fprintf('Time step %2d: FORCES took %2d iterations and %5.3f ', k,  info.it, info.solvetime*1000);
+        fprintf('milliseconds to solve the problem.\n');
     else
         info
         error('Some problem in solver');
     end
+    
+    % State update
     X(:,k+1) = A*X(:,k) + B*U(:,k);
 end
 
