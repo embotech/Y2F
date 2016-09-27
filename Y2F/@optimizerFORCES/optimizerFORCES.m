@@ -28,7 +28,7 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
 %                       solver, can be a linear combination of decision
 %                       variables and parameters
 %   Outputs:
-%       sys:            reference to OPTIMIZERFORCES object. Use this to
+%       solver:         reference to OPTIMIZERFORCES object. Use this to
 %                       call solver. Example:
 %                           solver = optimizerFORCES(...);
 %                           x = solver{paramValues};
