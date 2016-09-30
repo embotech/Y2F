@@ -40,8 +40,8 @@ cost = 0;
 const = [];
 
 % Cell arrays for x_0, x_1, ..., x_N and u_0, ..., u_N-1
-x = num2cell(sdpvar(nx,N+1),1);
-u = num2cell(sdpvar(nu,N),1);
+x = num2cell(sdpvar(nx,N+1,'full'),1);
+u = num2cell(sdpvar(nu,N,'full'),1);
 
 for i = 1:N        
     % cost
