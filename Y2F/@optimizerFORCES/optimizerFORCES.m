@@ -646,7 +646,7 @@ warning(w);
         % Shift indices of parameters
         for i=1:numel(qcqpParams.H)
             [row,col] = ind2sub(size(H)+length(removeIdx),qcqpParams.H(i).maps2index);
-            qcqpParams.H(i).maps2index = sub2ind(size(H),row,col-shift(col));
+            qcqpParams.H(i).maps2index = sub2ind(size(H),row-shift(row),col-shift(col));
         end
         for i=1:numel(qcqpParams.f)
             qcqpParams.f(i).maps2index = qcqpParams.f(i).maps2index - shift(qcqpParams.f(i).maps2index);
