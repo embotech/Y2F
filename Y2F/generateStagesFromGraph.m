@@ -65,13 +65,19 @@ for i=1:G.n
     % Is H a parameter? (TODO: H is a special case! Diagonal?!)
     relevantParams = findRelevantParams(idx,idx,size(H),qcqpParams.H);
     if ~isempty(relevantParams) % Yes!
-        createParameters('H', i, relevantParams, size(H), idx, idx, 'cost.H');
-        % TODO: add support for diagonal parameters
+        % Check if H is diagonal
+        if all(stages(i).cost.H(~eye(length(idx))) == 0) && ... % nondiagonal entries are zero
+                all(ismember([qcqpParams.H(relevantParams).maps2index], sub2ind(size(H),idx,idx))) % all parameters affect diagonal entries
+            % We have a diagonal H --> create a diagonal parameter
+            createDiagonalCostParameter(i, relevantParams, idx);
+        else % H is not diagonal --> do the standard thing
+            createParameter('H', i, relevantParams, size(H), idx, idx, 'cost.H');
+        end
     end
     % Is f a parameter?
     relevantParams = findRelevantParams(idx,1,size(f),qcqpParams.f);
     if ~isempty(relevantParams)
-        createParameters('f', i, relevantParams, size(f), idx, 1, 'cost.f');
+        createParameter('f', i, relevantParams, size(f), idx, 1, 'cost.f');
     end
     
     % Select relevant equalities and set the constraints
@@ -100,20 +106,20 @@ for i=1:G.n
     % Is C a parameter?
     relevantParams = findRelevantParams(eq_idx,last_idx,size(Aeq),qcqpParams.Aeq);
     if ~isempty(relevantParams) && i > 1
-        createParameters('Aeq', i-1, relevantParams, size(Aeq), eq_idx, last_idx, 'eq.C');
+        createParameter('Aeq', i-1, relevantParams, size(Aeq), eq_idx, last_idx, 'eq.C');
     end
     % Is D a parameter?
     relevantParams = findRelevantParams(eq_idx,idx,size(Aeq),qcqpParams.Aeq);
     if ~isempty(relevantParams)
-        createParameters('Aeq', i, relevantParams, size(Aeq), eq_idx, idx, 'eq.D');
+        createParameter('Aeq', i, relevantParams, size(Aeq), eq_idx, idx, 'eq.D');
     end
     % Is c a parameter?
     relevantParams = findRelevantParams(eq_idx,1,size(beq),qcqpParams.beq);
     if ~isempty(relevantParams)
         if d1IsSet
-            createParameters('beq', i, relevantParams, size(beq), eq_idx, 1, 'eq.c');
+            createParameter('beq', i, relevantParams, size(beq), eq_idx, 1, 'eq.c');
         else
-            createParameters('beq', i-1, relevantParams, size(beq), eq_idx, 1, 'eq.c');
+            createParameter('beq', i-1, relevantParams, size(beq), eq_idx, 1, 'eq.c');
         end
     end
     
@@ -126,7 +132,7 @@ for i=1:G.n
     % Is lb a parameter?
     relevantParams = findRelevantParams(idx,1,size(lb),qcqpParams.lb);
     if ~isempty(relevantParams)
-        createParameters('lb', i, relevantParams, size(lb), idx(stages(i).ineq.b.lbidx), 1, 'ineq.b.lb');
+        createParameter('lb', i, relevantParams, size(lb), idx(stages(i).ineq.b.lbidx), 1, 'ineq.b.lb');
     end
     
     % Upper bounds
@@ -138,7 +144,7 @@ for i=1:G.n
     % Is ub a parameter?
     relevantParams = findRelevantParams(idx,1,size(ub),qcqpParams.ub);
     if ~isempty(relevantParams)
-        createParameters('ub', i, relevantParams, size(ub), idx(stages(i).ineq.b.ubidx), 1, 'ineq.b.ub');
+        createParameter('ub', i, relevantParams, size(ub), idx(stages(i).ineq.b.ubidx), 1, 'ineq.b.ub');
     end
     
     % Linear inequalities
@@ -151,12 +157,12 @@ for i=1:G.n
         % Is p.A a parameter?
         relevantParams = findRelevantParams(ineq_idx,idx,size(Aineq),qcqpParams.Aineq);
         if ~isempty(relevantParams)
-            createParameters('Aineq', i, relevantParams, size(Aineq), ineq_idx, idx, 'ineq.p.A');
+            createParameter('Aineq', i, relevantParams, size(Aineq), ineq_idx, idx, 'ineq.p.A');
         end
         % Is p.b a parameter?
         relevantParams = findRelevantParams(ineq_idx,1,size(bineq),qcqpParams.bineq);
         if ~isempty(relevantParams)
-            createParameters('bineq', i, relevantParams, size(bineq), ineq_idx, 1, 'ineq.p.b');
+            createParameter('bineq', i, relevantParams, size(bineq), ineq_idx, 1, 'ineq.p.b');
         end
     end
     
@@ -283,7 +289,7 @@ for i=1:G.n
     last_idx = idx;
 end
 
-    function createParameters(matrix, stage, relevantParams, matrixSize, row_idx, col_idx, name)
+    function createParameter(matrix, stage, relevantParams, matrixSize, row_idx, col_idx, name)
     % Helper function to create FORCES parameters
 
         params(p) = newParam(sprintf('p_%u',p), stage, name);
@@ -320,6 +326,31 @@ end
         end
         p = p + 1;
     end
+
+    function createDiagonalCostParameter(stage, relevantParams, element_idx)
+    % Helper function to create a FORCES parameters for a diagonal cost
+        params(p) = newParam(sprintf('p_%u',p), stage, 'cost.H', 'diag');
+        standardParamValues.(sprintf('p_%u',p)) = stages(stage).cost.H(logical(eye(length(element_idx)))); % only use diagonal
+        stages(stage).cost.H = [];
+
+        forcesParamMap.(sprintf('p_%u',p)) = zeros(4,0);
+        paramSize = size(standardParamValues.(sprintf('p_%u',p)));
+        for j=relevantParams
+            for element=1:length(element_idx)
+                value_idx = find(sub2ind(size(H),element_idx(element),element_idx(element)) == ...
+                        qcqpParams.H(j).maps2index);
+                if length(value_idx) == 1
+                    forcesParamMap.(sprintf('p_%u',p))(:,end+1) = [element;...
+                                                                   qcqpParams.H(j).factor;...
+                                                                   yalmipParamMap(:,qcqpParams.H(j).maps2origparam)];
+                elseif length(value_idx) > 1
+                    error('Mistake in the new stages formulation')
+                end
+            end
+        end
+        p = p + 1;
+    end
+            
 
 end
 
