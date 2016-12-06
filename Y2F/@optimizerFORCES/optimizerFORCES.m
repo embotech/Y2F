@@ -1,4 +1,4 @@
-function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,parameters,solverOutputs )
+function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,parameters,solverOutputs,varargin )
 %OPTIMIZERFORCES Generates a FORCES Pro solver from a YALMIP problem formulation
 %
 %   solver = OPTIMIZERFORCES(constraint,objective,codeoptions,parameters,solverOutputs)
@@ -45,9 +45,44 @@ if ~exist('optimizer','file')
     error('YALMIP could not be found. Please make sure it is installed correctly.')
 end
 
+% We need all arguments
+switch nargin
+    case 0
+        error('Constraints not found')
+    case 1
+        error('Objective not found')
+    case 2
+        error('Solver options not found')
+    case 3
+        error('Parameter(s) not found')
+    case 4
+        error('Output(s) not found')
+end
+
 % We need parameters
 if isempty(parameters)
     error('FORCES Pro does not support problems without parameters.');
+end
+
+if ~iscell(parameters) % we allow single parameters
+    parameters = {parameters}; % put single param into cell array
+end
+
+% Read parameter and output names if they were passed along
+parser = inputParser;
+addParameter(parser,'ParameterNames',cell(1,0),@iscellstr);
+addParameter(parser,'OutputNames',cell(1,0),@iscellstr);
+parse(parser,varargin{:})
+paramNames = parser.Results.ParameterNames;
+outputNames = parser.Results.ParameterNames;
+
+% Fix parameter (make them valid & unique variables names)
+paramNames = matlab.lang.makeValidName(paramNames);
+paramNames = matlab.lang.makeUniqueStrings(paramNames);
+
+% Create missing parameter names
+while numel(paramNames) < numel(parameters)
+    paramNames{end+1} = sprintf('param%u', numel(paramNames)+1);
 end
 
 % Prepare struct that is going to be converted into the optimizerFORCES
@@ -60,7 +95,17 @@ if ~iscell(solverOutputs)
     sys.outputIsCell = 0;
 end
 
-%% Call YALMIP and convert Qp into FORCES format
+% Fix parameter (make them valid & unique variables names)
+outputNames = matlab.lang.makeValidName(outputNames);
+outputNames = matlab.lang.makeUniqueStrings(outputNames);
+
+% Create missing parameter names
+while numel(outputNames) < numel(solverOutputs)
+    outputNames{end+1} = sprintf('output%u', numel(outputNames)+1);
+end
+
+
+%% Call YALMIP and convert QP into FORCES format
 disp('Using YALMIP to convert problem into QP...')
 
 [internalmodel,H,f,Aineq,bineq,Aeq,beq,lb,ub] = getQpAndModelFromYALMIP();
@@ -159,12 +204,13 @@ disp('Generating solver using FORCES...')
 
 % Generate solver using FORCES
 success = 1;
-codeoptions = {codeoptions};
+default_codeoptions = codeoptions;
+codeoptions = cell(1,numel(stages));
 for i=1:numel(stages)
-    if i > 1 % new name for each solver
-        codeoptions{i} = codeoptions{1};
-        codeoptions{i}.name = sprintf('%s_%u',codeoptions{1}.name,i);
-    end
+    % new name for each solver
+    codeoptions{i} = default_codeoptions;
+    codeoptions{i}.name = sprintf('internal_%s_%u',default_codeoptions.name,i);
+        
     success = generateCode(stages{i},params{i},codeoptions{i},outputFORCES{i}) & success;
 end
 
@@ -176,6 +222,8 @@ end
 sys.stages = stages;
 sys.numSolvers = numel(stages);
 sys.params = params;
+sys.paramNames = paramNames;
+sys.outputNames = outputNames;
 sys.outputFORCES = outputFORCES;
 sys.qcqpParams = qcqpParams;
 sys.standardParamValues = standardParamValues;
@@ -183,13 +231,16 @@ sys.solverVars = solverVars;
 sys.parameters = parameters;
 sys.forcesParamMap = forcesParamMap;
 sys.codeoptions = codeoptions;
-sys.interfaceFunction = str2func([codeoptions{1}.name '_optimizerFORCES_interface']);
+sys.default_codeoptions = default_codeoptions;
+sys.interfaceFunction = str2func(default_codeoptions.name);
 
 sys = class(sys,'optimizerFORCES');
 
 % Generate MEX code that is called when the solver is used
-disp('Generating MEX code for solver interface...');
-generateSolverInterfaceCode(sys);
+disp('Generating C interface...');
+%generateSolverInterfaceCode(sys);
+generateCInterfaceCode(sys);
+generateMEXInterfaceCode(sys);
 
 % Compile MEX code
 disp('Compiling MEX code for solver interface...');
@@ -286,10 +337,6 @@ warning(w);
         yalmipParamMap = zeros(2,0); % 1st row: index of matrix with values,
                                          % 2nd row: index of element inside matrix
         if ~isempty(parameters)
-            if ~iscell(parameters) % we allow single parameters
-                parameters = {parameters}; % put single param into cell array
-            end
-
             sys.paramSizes = zeros(numel(parameters),2);
             for i=1:numel(parameters)
                 if ~isa(parameters{i}, 'sdpvar')
