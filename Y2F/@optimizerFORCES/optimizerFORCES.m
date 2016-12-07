@@ -12,8 +12,8 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
 %   Example usage:
 %
 %       sdpvar x y p
+%       options = getOptions('solver_name')
 %     	solver = optimizerFORCES([x + y == p], x^2+y^2, options, p, {x,y})
-%       
 %       solution = solver{5} % solve problem for p = 5
 %       
 %
