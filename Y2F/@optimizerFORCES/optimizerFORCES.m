@@ -247,6 +247,12 @@ disp('Compiling MEX code for solver interface...');
 
 compileSolverInterfaceCode(sys);
 
+% Generate help file
+disp('Writing help file...');
+
+generateHelp(sys);
+
+
 % Restore warning state
 warning(w);
 
