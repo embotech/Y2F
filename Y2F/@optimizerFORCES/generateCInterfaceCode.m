@@ -233,7 +233,7 @@ fprintf(cFileID, '*/ \n\n');
 
 fprintf(cFileID, '#include "../include/%s.h"\n',solverName);
 for k=1:self.numSolvers
-    fprintf(cFileID, '#include "../../%s/include/%s.h"\n',self.codeoptions{k}.name,self.codeoptions{k}.name);
+    fprintf(cFileID, '#include "../include/%s.h"\n',self.codeoptions{k}.name);
 end
 fprintf(cFileID, '#include <stdio.h>\n\n');
 

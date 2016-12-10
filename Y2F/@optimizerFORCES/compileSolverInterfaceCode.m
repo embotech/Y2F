@@ -5,24 +5,49 @@ solverName = self.default_codeoptions.name;
 cName = [solverName '/interface/' solverName];
 mexName = [solverName '/interface/' solverName '_mex'];
 outputName = ['"' solverName '"'];
-    
-
 
 % copy the O-files of all solvers into /interface
 % we'll delete them later, but this makes compilation easier
 for i=1:self.numSolvers
-    if( ispc )
-        copyfile(sprintf('%s/obj/%s.obj',self.codeoptions{i}.name,self.codeoptions{i}.name), sprintf('%s/interface',solverName), 'f');
-    else % mac or linux
+    if( ~ispc )
         copyfile(sprintf('%s/obj/%s.o',self.codeoptions{i}.name,self.codeoptions{i}.name), sprintf('%s/interface',solverName), 'f');
+    end
+end
+    
+% move the (necessary) files of all solvers to the new directory and delete
+% the folders of the "internal" solvers
+for i=1:self.numSolvers
+    % include
+    copyfile(sprintf('%s/include',self.codeoptions{i}.name), sprintf('%s/include',solverName), 'f');
+    % lib
+    copyfile(sprintf('%s/lib',self.codeoptions{i}.name), sprintf('%s/lib',solverName), 'f');
+    % obj
+    copyfile(sprintf('%s/obj',self.codeoptions{i}.name), sprintf('%s/obj',solverName), 'f');
+    % src
+    if exist(sprintf('%s/src',self.codeoptions{i}.name),'dir')
+        copyfile(sprintf('%s/src',self.codeoptions{i}.name), sprintf('%s/src',solverName), 'f');
+    end
+    
+    % Delete files
+    rmdir(self.codeoptions{i}.name, 's');
+    delete([self.codeoptions{i}.name '*']);
+end
+
+% Create a list of internal solver libraries for Windows
+if (ispc)
+    libs = cell(1,self.numSolvers);
+    for i=1:self.numSolvers
+        libs{i} = ['-l' self.codeoptions{i}.name];
     end
 end
 
 if exist( [cName '.c'], 'file' ) && exist( [mexName '.c'], 'file' )
     mex('-c','-O','-outdir',[solverName '/interface'],[cName '.c'])
     mex('-c','-O','-outdir',[solverName '/interface'],[mexName '.c'])
-    if( ispc )
-        mex([solverName '/interface/*.obj'], '-output', outputName) 
+    if( ispc ) % PC - we need additional libraries
+        mex([solverName '/interface/*.obj'], '-output', outputName, ...
+            ['-L' solverName '/lib'], libs{:}, '-llibdecimal', ...
+            '-llibirc', '-llibmmt', '-lsvml_dispmt');
         delete([solverName '/interface/*.obj']);
     elseif( ismac )
         mex([solverName '/interface/*.o'], '-output', outputName) 
