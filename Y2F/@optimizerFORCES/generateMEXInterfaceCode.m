@@ -57,7 +57,7 @@ fprintf(fileID, '\tint i;\n');
 if self.numSolvers == 1
     fprintf(fileID, '\tint exitflag;\n');
 else
-    fprintf(fileID, '\tint *exitflag;\n',self.numSolvers);
+    fprintf(fileID, '\tint *exitflag;\n');
 end
 fprintf(fileID, '\tconst char *fname;\n\n');
 
@@ -80,7 +80,7 @@ fprintf(fileID, '\t\tmexErrMsgTxt("param_values must be a cell array.");\n');
 fprintf(fileID, '\t}\n\n');
 
 % Check length of input
-fprintf(fileID, '\t/* Check whether params is actually a cell array */\n');
+fprintf(fileID, '\t/* Check whether params has the right number of elements */\n');
 fprintf(fileID, '\tif( mxGetNumberOfElements(param_values) != %u ) {\n',self.numParams);
 fprintf(fileID, '\t\tmexErrMsgTxt("param_values must have %u elements.");\n',self.numParams);
 fprintf(fileID, '\t}\n\n');
@@ -164,94 +164,90 @@ if self.numSolvers > 1
 
     fprintf(fileID, '\t/* copy info structs */\n');
     fprintf(fileID, '\tif( nlhs > 2 ) {\n');
-    fprintf(fileID, '\t\tplhs[2] = mxCreateCellMatrix(1, %u);\n',self.numSolvers);
-    fprintf(fileID, '\t\tmxArray *temp_info;\n\n');
+    fprintf(fileID, '\t\tplhs[2] = mxCreateStructMatrix(%u, 1, 16, infofields);\n\n', self.numSolvers);
 
     for i=1:self.numSolvers
         fprintf(fileID, '\t\t/* info for solver #%u */\n',i);
-        fprintf(fileID, '\t\ttemp_info = mxCreateStructMatrix(1, 1, 16, infofields);\n\n');
 
         fprintf(fileID, '\t\t/* iterations */\n');
         fprintf(fileID, '\t\toutvar = mxCreateDoubleMatrix(1, 1, mxREAL);\n');
         fprintf(fileID, '\t\t*mxGetPr(outvar) = (double)info.it[%u];\n',i-1);
-        fprintf(fileID, '\t\tmxSetField(temp_info, 0, "it", outvar);\n\n');
+        fprintf(fileID, '\t\tmxSetField(plhs[2], %u, "it", outvar);\n\n',i-1);
 
         fprintf(fileID, '\t\t/* iterations to optimality (branch and bound) */\n');
         fprintf(fileID, '\t\toutvar = mxCreateDoubleMatrix(1, 1, mxREAL);\n');
         fprintf(fileID, '\t\t*mxGetPr(outvar) = (double)info.it2opt[%u];\n',i-1);
-        fprintf(fileID, '\t\tmxSetField(temp_info, 0, "it2opt", outvar);\n\n');
+        fprintf(fileID, '\t\tmxSetField(plhs[2], %u, "it2opt", outvar);\n\n',i-1);
 
         fprintf(fileID, '\t\t/* res_eq */\n');
         fprintf(fileID, '\t\toutvar = mxCreateDoubleMatrix(1, 1, mxREAL);\n');
         fprintf(fileID, '\t\t*mxGetPr(outvar) = info.res_eq[%u];\n',i-1);
-        fprintf(fileID, '\t\tmxSetField(temp_info, 0, "res_eq", outvar);\n\n');
+        fprintf(fileID, '\t\tmxSetField(plhs[2], %u, "res_eq", outvar);\n\n',i-1);
 
         fprintf(fileID, '\t\t/* res_ineq */\n');
         fprintf(fileID, '\t\toutvar = mxCreateDoubleMatrix(1, 1, mxREAL);\n');
         fprintf(fileID, '\t\t*mxGetPr(outvar) = info.res_ineq[%u];\n',i-1);
-        fprintf(fileID, '\t\tmxSetField(temp_info, 0, "res_ineq", outvar);\n\n');
+        fprintf(fileID, '\t\tmxSetField(plhs[2], %u, "res_ineq", outvar);\n\n',i-1);
 
         fprintf(fileID, '\t\t/* pobj */\n');
         fprintf(fileID, '\t\toutvar = mxCreateDoubleMatrix(1, 1, mxREAL);\n');
         fprintf(fileID, '\t\t*mxGetPr(outvar) = info.pobj[%u];\n',i-1);
-        fprintf(fileID, '\t\tmxSetField(temp_info, 0, "pobj", outvar);\n\n');
+        fprintf(fileID, '\t\tmxSetField(plhs[2], %u, "pobj", outvar);\n\n',i-1);
 
         fprintf(fileID, '\t\t/* dobj */\n');
         fprintf(fileID, '\t\toutvar = mxCreateDoubleMatrix(1, 1, mxREAL);\n');
         fprintf(fileID, '\t\t*mxGetPr(outvar) = info.dobj[%u];\n',i-1);
-        fprintf(fileID, '\t\tmxSetField(temp_info, 0, "dobj", outvar);\n\n');
+        fprintf(fileID, '\t\tmxSetField(plhs[2], %u, "dobj", outvar);\n\n',i-1);
 
         fprintf(fileID, '\t\t/* dgap */\n');
         fprintf(fileID, '\t\toutvar = mxCreateDoubleMatrix(1, 1, mxREAL);\n');
         fprintf(fileID, '\t\t*mxGetPr(outvar) = info.dgap[%u];\n',i-1);
-        fprintf(fileID, '\t\tmxSetField(temp_info, 0, "dgap", outvar);\n\n');
+        fprintf(fileID, '\t\tmxSetField(plhs[2], %u, "dgap", outvar);\n\n',i-1);
 
         fprintf(fileID, '\t\t/* rdgap */\n');
         fprintf(fileID, '\t\toutvar = mxCreateDoubleMatrix(1, 1, mxREAL);\n');
         fprintf(fileID, '\t\t*mxGetPr(outvar) = info.rdgap[%u];\n',i-1);
-        fprintf(fileID, '\t\tmxSetField(temp_info, 0, "rdgap", outvar);\n\n');
+        fprintf(fileID, '\t\tmxSetField(plhs[2], %u, "rdgap", outvar);\n\n',i-1);
 
         fprintf(fileID, '\t\t/* mu */\n');
         fprintf(fileID, '\t\toutvar = mxCreateDoubleMatrix(1, 1, mxREAL);\n');
         fprintf(fileID, '\t\t*mxGetPr(outvar) = info.mu[%u];\n',i-1);
-        fprintf(fileID, '\t\tmxSetField(temp_info, 0, "mu", outvar);\n\n');
+        fprintf(fileID, '\t\tmxSetField(plhs[2], %u, "mu", outvar);\n\n',i-1);
 
         fprintf(fileID, '\t\t/* mu_aff */\n');
         fprintf(fileID, '\t\toutvar = mxCreateDoubleMatrix(1, 1, mxREAL);\n');
         fprintf(fileID, '\t\t*mxGetPr(outvar) = info.mu_aff[%u];\n',i-1);
-        fprintf(fileID, '\t\tmxSetField(temp_info, 0, "mu_aff", outvar);\n\n');
+        fprintf(fileID, '\t\tmxSetField(plhs[2], %u, "mu_aff", outvar);\n\n',i-1);
 
         fprintf(fileID, '\t\t/* sigma */\n');
         fprintf(fileID, '\t\toutvar = mxCreateDoubleMatrix(1, 1, mxREAL);\n');
         fprintf(fileID, '\t\t*mxGetPr(outvar) = info.sigma[%u];\n',i-1);
-        fprintf(fileID, '\t\tmxSetField(temp_info, 0, "sigma", outvar);\n\n');
+        fprintf(fileID, '\t\tmxSetField(plhs[2], %u, "sigma", outvar);\n\n',i-1);
 
         fprintf(fileID, '\t\t/* lsit_aff */\n');
         fprintf(fileID, '\t\toutvar = mxCreateDoubleMatrix(1, 1, mxREAL);\n');
         fprintf(fileID, '\t\t*mxGetPr(outvar) = (double)info.lsit_aff[%u];\n',i-1);
-        fprintf(fileID, '\t\tmxSetField(temp_info, 0, "lsit_aff", outvar);\n\n');
+        fprintf(fileID, '\t\tmxSetField(plhs[2], %u, "lsit_aff", outvar);\n\n',i-1);
 
         fprintf(fileID, '\t\t/* lsit_cc */\n');
         fprintf(fileID, '\t\toutvar = mxCreateDoubleMatrix(1, 1, mxREAL);\n');
         fprintf(fileID, '\t\t*mxGetPr(outvar) = (double)info.lsit_cc[%u];\n',i-1);
-        fprintf(fileID, '\t\tmxSetField(temp_info, 0, "lsit_cc", outvar);\n\n');
+        fprintf(fileID, '\t\tmxSetField(plhs[2], %u, "lsit_cc", outvar);\n\n',i-1);
 
         fprintf(fileID, '\t\t/* step_aff */\n');
         fprintf(fileID, '\t\toutvar = mxCreateDoubleMatrix(1, 1, mxREAL);\n');
         fprintf(fileID, '\t\t*mxGetPr(outvar) = info.step_aff[%u];\n',i-1);
-        fprintf(fileID, '\t\tmxSetField(temp_info, 0, "step_aff", outvar);\n\n');
+        fprintf(fileID, '\t\tmxSetField(plhs[2], %u, "step_aff", outvar);\n\n',i-1);
 
         fprintf(fileID, '\t\t/* step_cc */\n');
         fprintf(fileID, '\t\toutvar = mxCreateDoubleMatrix(1, 1, mxREAL);\n');
         fprintf(fileID, '\t\t*mxGetPr(outvar) = info.step_cc[%u];\n',i-1);
-        fprintf(fileID, '\t\tmxSetField(temp_info, 0, "step_cc", outvar);\n\n');
+        fprintf(fileID, '\t\tmxSetField(plhs[2], %u, "step_cc", outvar);\n\n',i-1);
 
         fprintf(fileID, '\t\t/* solver time */\n');
         fprintf(fileID, '\t\toutvar = mxCreateDoubleMatrix(1, 1, mxREAL);\n');
         fprintf(fileID, '\t\t*mxGetPr(outvar) = info.solvetime[%u];\n',i-1);
-        fprintf(fileID, '\t\tmxSetField(temp_info, 0, "solvetime", outvar);\n\n');
-
-        fprintf(fileID, '\t\tmxSetCell(plhs[2],%u,temp_info);\n\n',i-1);
+        fprintf(fileID, '\t\tmxSetField(plhs[2], %u, "solvetime", outvar);\n\n',i-1);
     end
     fprintf(fileID, '\t}\n');
 else % only one solver --> no cell arrays necessary
