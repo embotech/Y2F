@@ -15,7 +15,7 @@ The code has been tested with YALMIP release 20150919. Older versions might work
 
 Consider the following linear MPC problem with lower and upper bounds on state and inputs, and a terminal cost term:
 
-![\begin{aligned}\text{minimize} \quad & x_N^T P x_N + \sum_{i=0}^{N-1} x_i^T Q x_i + u_i^T R u_i \\ \text{s.t.} \quad & x_0 = x(t) \\& x_{i+1} = Ax_i + Bu_i \\& \underline{x} \leq x_i \leq \bar{x} \\& \underline{u} \leq u_i \leq \bar{u}\end{aligned}](http://www.sciweavers.org/tex2img.php?eq=%5Cbegin%7Baligned%7D%0A%5Ctext%7Bminimize%7D%20%5Cquad%20%26%20x_N%5ET%20P%20x_N%20%2B%20%5Csum_%7Bi%3D0%7D%5E%7BN-1%7D%20x_i%5ET%20Q%20x_i%20%2B%20u_i%5ET%20R%20u_i%20%5C%5C%20%0A%5Ctext%7Bs.t.%7D%20%5Cquad%20%26%20x_0%20%3D%20x%28t%29%20%5C%5C%0A%26%20x_%7Bi%2B1%7D%20%3D%20Ax_i%20%2B%20Bu_i%20%5C%5C%0A%26%20%5Cunderline%7Bx%7D%20%5Cleq%20x_i%20%5Cleq%20%5Cbar%7Bx%7D%20%5C%5C%0A%26%20%5Cunderline%7Bu%7D%20%5Cleq%20u_i%20%5Cleq%20%5Cbar%7Bu%7D%0A%5Cend%7Baligned%7D&bc=White&fc=Black&im=jpg&fs=12&ff=mathdesign&edit=0)
+![\begin{aligned}\text{minimize} \quad & x_N^T P x_N + \sum_{i=0}^{N-1} x_i^T Q x_i + u_i^T R u_i \\ \text{s.t.} \quad & x_0 = x(t) \\& x_{i+1} = Ax_i + Bu_i \\& \underline{x} \leq x_i \leq \bar{x} \\& \underline{u} \leq u_i \leq \bar{u}\end{aligned}](example_problem.png)
 
 This problem is parametric in the initial state x(t), and the first input u0 is typically applied to the system after a solution has been obtained. The following code generates a solver that returns u0, which can then be applied to the system:
 
