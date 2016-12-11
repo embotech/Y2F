@@ -1,20 +1,10 @@
-% This example extends the basic MPC example by additional parametric
-% inequalities. The inequalities are defined by a time-varying 2x2 matrix
-% that is defined by 2 parameters (instead of 4 as one would expect).
+% Basic MPC example demonstrating the use of Yalmip to formulate MPC 
+% problems and FORCES to solve them very quickly.
 %
-%   R(k)*x <= R(k)*xmax
+% In this example, we will make the cost weights parametric for later
+% tuning.
 %
-% where k is the simulation step and the rotation matrix is defined by 
-%
-%    R(k) = [ cos(k*w)  -sin(k*w)    = [ r1  -r2
-%             sin(k*w)   cos(k*w) ]      r2   r1 ] 
-%
-% where k is the simulation step, and w a fixed number. Hence we have
-%
-%   r1 := cos(k*w)
-%   r2 := sin(k*w)
-%
-% Overall, the following problem is solved at each time step:
+% Simple MPC - double integrator example for use with FORCES Pro
 % 
 %  min   xN'*P*xN + sum_{i=1}^{N-1} xi'*Q*xi + ui'*R*ui
 % xi,ui
@@ -22,9 +12,9 @@
 %            x_i+1 = A*xi + B*ui  for i = 1...N-1
 %            xmin <= xi <= xmax   for i = 1...N
 %            umin <= ui <= umax   for i = 1...N
-%            R(k)*xi <= R(k)*xmax for i = 1...N
 %
-% and P is solution of Ricatti eqn. from LQR problem
+% and P is solution of Ricatti eqn. from LQR problem. Q will be a
+% parameter.
 %
 % Note: due to 1-based indexing in Matlab, we use 1...N+1 instead of 0...N
 %       as indices for state and input trajectory
@@ -43,21 +33,20 @@ B = [1; 0.5];
 % horizon
 N = 10;
 
-% cost matrices
-Q = eye(2);
-R = eye(1);
-[~,P] = dlqr(A,B,Q,R);
-
 % constraints
 umin = -0.5;     umax = 0.5;
 xmin = [-5; -5]; xmax = [5; 5];
 
 %% Build MPC problem in Yalmip
 
-% Cell arrays for x_0, x_1, ..., x_N and u_0, ..., u_N-1
+% Define variables
 X = sdpvar(nx,N+1,'full'); % state trajectory: x0,x1,...,xN (columns of X)
 U = sdpvar(nu,N,'full'); % input trajectory: u0,...,u_{N-1} (columns of U)
-sdpvar r1 r2 % parameters for rotation matrix
+
+% Cost matrices - these will be parameters later
+Q = sdpvar(nx);
+R = sdpvar(nu);
+P = sdpvar(nx);
 
 % Initialize objective and constraints of the problem
 cost = 0; const = [];
@@ -77,18 +66,14 @@ for i = 1:N
     % bounds
     const = [const, umin <= U(:,i) <= umax];
     const = [const, xmin <= X(:,i+1) <= xmax];
-        
-    % rotation constraint R(k)*x <= R(k)*xmax
-    const = [const, [r1, -r2; r2, r1]*X(:,i+1) <= [r1, -r2; r2, r1]*xmax];
 end
 
-
 %% Create controller object (generates code)
-codeoptions = getOptions('FORCESsolver');
-
-parameters = { X(:,1), r1, r2 };
-outputs = U(:,1);
-controller = optimizerFORCES(const, cost, codeoptions, parameters, outputs);
+% for a complete list of codeoptions, see 
+% https://www.embotech.com/FORCES-Pro/User-Manual/Low-level-Interface/Solver-Options
+codeoptions = getOptions('FORCESsolver'); % give solver a name
+parameters = { X(:,1), Q, R, P };
+controller = optimizerFORCES(const, cost, codeoptions, parameters, U(:,1));
 
 
 %% Simulate
@@ -97,12 +82,17 @@ kmax = 30;
 X = zeros(nx,kmax+1); X(:,1) = x1;
 U = zeros(nu,kmax);
 problem.z1 = zeros(2*nx,1);
-w = 1E-2;
+
+% set cost matrices
+Q = eye(2);
+R = eye(1);
+[~,P] = dlqr(A,B,Q,R);
+
+
 for k = 1:kmax
     
     % Evaluate controller function for parameters
-    r1 = cos(w*k); r2 = sin(w*k);
-    [U(:,k),exitflag,info] = controller{ {X(:,k), r1, r2} };
+    [U(:,k),exitflag,info] = controller{ X(:,k), Q,R,P };
     
     % Always check the exitflag in case something went wrong in the solver
     if( exitflag == 1 )

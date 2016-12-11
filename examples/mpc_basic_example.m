@@ -29,7 +29,7 @@ B = [1; 0.5];
 % horizon
 N = 10;
 
-% cost matrics
+% cost matrices
 Q = eye(2);
 R = eye(1);
 [~,P] = dlqr(A,B,Q,R);
