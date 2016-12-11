@@ -25,6 +25,11 @@
 %            R(k)*xi <= R(k)*xmax for i = 1...N
 %
 % and P is solution of Ricatti eqn. from LQR problem
+%
+% Note: due to 1-based indexing in Matlab, we use 1...N+1 instead of 0...N
+%       as indices for state and input trajectory
+%
+% (c) embotech GmbH, Zurich, Switzerland, 2013-2016.
 
 clear; clc;
 
@@ -49,42 +54,41 @@ xmin = [-5; -5]; xmax = [5; 5];
 
 %% Build MPC problem in Yalmip
 
-% Initialize objective and constraints of the problem
-cost = 0;
-const = [];
-
 % Cell arrays for x_0, x_1, ..., x_N and u_0, ..., u_N-1
-x = num2cell(sdpvar(nx,N+1),1);
-u = num2cell(sdpvar(nu,N),1);
-sdpvar r1 r2
+X = sdpvar(nx,N+1,'full'); % state trajectory: x0,x1,...,xN (columns of X)
+U = sdpvar(nu,N,'full'); % input trajectory: u0,...,u_{N-1} (columns of U)
+sdpvar r1 r2 % parameters for rotation matrix
 
+% Initialize objective and constraints of the problem
+cost = 0; const = [];
+
+% Assemble MPC formulation
 for i = 1:N        
     % cost
-    if( i == N )
-        cost = cost + 0.5*x{i+1}'*P*x{i+1} + 0.5*u{i}'*R*u{i};
+    if( i < N )
+        cost = cost + 0.5*X(:,i+1)'*Q*X(:,i+1) + 0.5*U(:,i)'*R*U(:,i);
     else
-        cost = cost + 0.5*x{i+1}'*Q*x{i+1} + 0.5*u{i}'*R*u{i};
+        cost = cost + 0.5*X(:,N+1)'*P*X(:,N+1) + 0.5*U(:,N)'*R*U(:,N);
     end
-
+    
     % model
-    const = [const, x{i+1} == A*x{i} + B*u{i}];
+    const = [const, X(:,i+1) == A*X(:,i) + B*U(:,i)];
 
     % bounds
-    const = [const, umin <= u{i} <= umax];
-    const = [const, xmin <= x{i+1} <= xmax]; 
-    
+    const = [const, umin <= U(:,i) <= umax];
+    const = [const, xmin <= X(:,i+1) <= xmax];
+        
     % rotation constraint R(k)*x <= R(k)*xmax
-    const = [const, [r1, -r2; r2, r1]*x{i+1} <= [r1, -r2; r2, r1]*xmax];
-     
+    const = [const, [r1, -r2; r2, r1]*X(:,i+1) <= [r1, -r2; r2, r1]*xmax];
 end
 
 
 %% Create controller object (generates code)
 codeoptions = getOptions('FORCESsolver');
-%codeoptions.printlevel = 0; % switch off FORCES printing (default is 2)
 
-parameters = { x{1}, r1, r2 };
-controller = optimizerFORCES(const, cost, codeoptions, parameters, u{1});
+parameters = { X(:,1), r1, r2 };
+outputs = U(:,1);
+controller = optimizerFORCES(const, cost, codeoptions, parameters, outputs);
 
 
 %% Simulate
