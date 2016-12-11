@@ -43,13 +43,15 @@ xmin = [-5; -5]; xmax = [5; 5];
 %% Build MPC problem in Yalmip
 
 % Define variables
-X = sdpvar(nx,N+1,'full'); % state trajectory: x0,x1,...,xN (columns of X)
+x0 = sdpvar(nx,1); % initial state
+X = sdpvar(nx,N+1,'full'); % state trajectory: x1,...,xN (columns of X)
 U = sdpvar(nu,N,'full'); % input trajectory: u0,...,u_{N-1} (columns of U)
 A = sdpvar(nx,nx,'full'); % system matrix - parameter
 B = sdpvar(nx,nu,'full'); % input matrix - parameter
 
 % Initialize objective and constraints of the problem
-cost = 0; const = [];
+cost = 0;
+const = x0 == X(:,1);
 
 % Assemble MPC formulation
 for i = 1:N        
@@ -72,7 +74,7 @@ end
 % for a complete list of codeoptions, see 
 % https://www.embotech.com/FORCES-Pro/User-Manual/Low-level-Interface/Solver-Options
 codeoptions = getOptions('FORCESsolver'); % give solver a name
-parameters = { X(:,1), A, B }
+parameters = { x0, A, B };
 controller = optimizerFORCES(const, cost, codeoptions, parameters, U(:,1));
 
 
