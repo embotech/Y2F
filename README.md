@@ -66,4 +66,4 @@ The code is licensed under the MIT License. For more information see LICENSE fil
 
 ## Contributing
 
-See CONTRIBUTING.md file.
+See [CONTRIBUTING.md](CONTRIBUTING.md) file.
