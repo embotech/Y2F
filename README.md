@@ -63,3 +63,7 @@ u0 = controller{x0};
 ## License
 
 The code is licensed under the MIT License. For more information see LICENSE file.
+
+## Contributing
+
+See CONTRIBUTING.md file.
