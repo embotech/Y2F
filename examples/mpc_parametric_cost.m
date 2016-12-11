@@ -6,15 +6,15 @@
 %
 % Simple MPC - double integrator example for use with FORCES Pro
 % 
-%  min   xN'*P*xN + sum_{i=1}^{N-1} xi'*Q*xi + ui'*R*ui
+%  min   xN'*P*xN + sum_{i=0}^{N-1} xi'*Q*xi + ui'*R*ui
 % xi,ui
-%       s.t. x1 = x
-%            x_i+1 = A*xi + B*ui  for i = 1...N-1
+%       s.t. x0 = x(t)
+%            x_i+1 = A*xi + B*ui  for i = 0...N-1
 %            xmin <= xi <= xmax   for i = 1...N
-%            umin <= ui <= umax   for i = 1...N
+%            umin <= ui <= umax   for i = 0...N-1
 %
-% and P is solution of Ricatti eqn. from LQR problem. Q will be a
-% parameter.
+% and P is solution of Ricatti eqn. from LQR problem. The matrices Q,R,P, 
+% are parameters to the problem - the tuning of the cost function.
 %
 % Note: due to 1-based indexing in Matlab, we use 1...N+1 instead of 0...N
 %       as indices for state and input trajectory

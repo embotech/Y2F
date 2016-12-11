@@ -16,12 +16,12 @@
 %
 % Overall, the following problem is solved at each time step:
 % 
-%  min   xN'*P*xN + sum_{i=1}^{N-1} xi'*Q*xi + ui'*R*ui
+%  min   xN'*P*xN + sum_{i=0}^{N-1} xi'*Q*xi + ui'*R*ui
 % xi,ui
-%       s.t. x1 = x
-%            x_i+1 = A*xi + B*ui  for i = 1...N-1
+%       s.t. x0 = x(t)
+%            x_i+1 = A*xi + B*ui  for i = 0...N-1
 %            xmin <= xi <= xmax   for i = 1...N
-%            umin <= ui <= umax   for i = 1...N
+%            umin <= ui <= umax   for i = 0...N-1
 %            R(k)*xi <= R(k)*xmax for i = 1...N
 %
 % and P is solution of Ricatti eqn. from LQR problem
