@@ -77,13 +77,13 @@ fprintf(fileID, '\t}\n');
 % Check type of input
 fprintf(fileID, '\t/* Check whether params is actually a cell array */\n');
 fprintf(fileID, '\tif( !mxIsCell(param_values) ) {\n');
-fprintf(fileID, '\t\tmexErrMsgTxt("param_values must be a cell array.");\n');
+fprintf(fileID, '\t\tmexErrMsgTxt("%s requires a cell array as input.");\n',solverName);
 fprintf(fileID, '\t}\n\n');
 
 % Check length of input
 fprintf(fileID, '\t/* Check whether params has the right number of elements */\n');
 fprintf(fileID, '\tif( mxGetNumberOfElements(param_values) != %u ) {\n',self.numParams);
-fprintf(fileID, '\t\tmexErrMsgTxt("param_values must have %u elements.");\n',self.numParams);
+fprintf(fileID, '\t\tmexErrMsgTxt("Input must have %u elements.");\n',self.numParams);
 fprintf(fileID, '\t}\n\n');
 
 % Check sizes of parameter values and load their values

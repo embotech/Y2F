@@ -7,7 +7,7 @@ elseif isequal(subs.type,'.')
     error('No fields accessible in OPTIMIZERFORCES.');
 elseif isequal(subs.type,'{}') % --> call solver
     if ~isa(subs.subs{1},'cell')
-        paramValues = {subs.subs{1}};
+        paramValues = subs.subs;
     else
         paramValues = subs.subs{1};
     end
