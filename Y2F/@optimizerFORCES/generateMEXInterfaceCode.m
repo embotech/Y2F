@@ -51,6 +51,7 @@ fprintf(fileID, '\t/* file pointer for printing */\n');
 fprintf(fileID, '\tFILE *fp = NULL;\n\n');
     
 fprintf(fileID, '\t/* define variables */\n');
+fprintf(fileID, '\tmxArray *par;\n\n');
 fprintf(fileID, '\tconst mxArray *param_values = prhs[0];\n');
 fprintf(fileID, '\tmxArray *outvar;\n');
 fprintf(fileID, '\tint i;\n');
@@ -87,7 +88,6 @@ fprintf(fileID, '\t}\n\n');
 
 % Check sizes of parameter values and load their values
 fprintf(fileID, '\t/* Load param values into C arrays and check their size */\n');
-fprintf(fileID, '\tmxArray *par;\n\n');
 for i=1:self.numParams
     % Get cell element
     fprintf(fileID, '\tpar = mxGetCell(param_values,%u);\n',i-1);
