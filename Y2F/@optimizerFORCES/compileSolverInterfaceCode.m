@@ -18,14 +18,24 @@ end
 % the folders of the "internal" solvers
 for i=1:self.numSolvers
     % include
-    copyfile(sprintf('%s/include',self.codeoptions{i}.name), sprintf('%s/include',solverName), 'f');
+    dir2move = sprintf('%s/include',self.codeoptions{i}.name);
+    if( exist(dir2move,'dir') )
+        copyfile(dir2move, sprintf('%s/include',solverName), 'f');
+    end
     % lib
-    copyfile(sprintf('%s/lib',self.codeoptions{i}.name), sprintf('%s/lib',solverName), 'f');
+    dir2move = sprintf('%s/lib',self.codeoptions{i}.name);
+    if( exist(dir2move,'dir') )
+        copyfile(dir2move, sprintf('%s/lib',solverName), 'f');
+    end
     % obj
-    copyfile(sprintf('%s/obj',self.codeoptions{i}.name), sprintf('%s/obj',solverName), 'f');
+    dir2move = sprintf('%s/obj',self.codeoptions{i}.name);
+    if( exist(dir2move,'dir') )
+        copyfile(dir2move, sprintf('%s/obj',solverName), 'f');
+    end
     % src
-    if exist(sprintf('%s/src',self.codeoptions{i}.name),'dir')
-        copyfile(sprintf('%s/src',self.codeoptions{i}.name), sprintf('%s/src',solverName), 'f');
+    dir2move = sprintf('%s/src',self.codeoptions{i}.name);
+    if exist(dir2move,'dir')
+        copyfile(dir2move, sprintf('%s/src',solverName), 'f');
     end
     
     % Delete files
