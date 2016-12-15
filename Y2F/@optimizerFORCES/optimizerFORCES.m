@@ -210,7 +210,7 @@ for i=1:numel(stages)
     % new name for each solver
     codeoptions{i} = default_codeoptions;
     codeoptions{i}.name = sprintf('internal_%s_%u',default_codeoptions.name,i);
-        
+    codeoptions{i}.nohash = 1; % added by AD to avoid problem - exeprimental
     success = generateCode(stages{i},params{i},codeoptions{i},outputFORCES{i}) & success;
 end
 
@@ -843,8 +843,8 @@ warning(w);
             assert(length(id) == 1);
             k = quadIneq(2,id);
         else
-            Q{end+1} = zeros(size(H));
-            l(:,end+1) = zeros(size(H,1),1);
+            Q{end+1} = spalloc(size(H,1),size(H,2),0);%zeros(size(H));
+            l(:,end+1) = spalloc(size(H,1),1,0); %zeros(size(H,1),1);
             r(end+1) = 0;
             k = length(r);
             quadIneq(:,end+1) = [rowIdx;k];

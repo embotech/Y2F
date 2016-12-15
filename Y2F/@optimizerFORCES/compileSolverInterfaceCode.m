@@ -57,7 +57,7 @@ if exist( [cName '.c'], 'file' ) && exist( [mexName '.c'], 'file' )
     if( ispc ) % PC - we need additional libraries
         mex([solverName '/interface/*.obj'], '-output', outputName, ...
             ['-L' solverName '/lib'], libs{:}, '-llibdecimal', ...
-            '-llibirc', '-llibmmt', '-lsvml_dispmt');
+            '-llibirc', '-llibmmt', '-lsvml_dispmt', '-lIPHLPAPI.lib');
         delete([solverName '/interface/*.obj']);
     elseif( ismac )
         mex([solverName '/interface/*.o'], '-output', outputName) 
