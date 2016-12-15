@@ -1,4 +1,4 @@
-function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,parameters,solverOutputs,varargin )
+function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,parameters,solverOutputs,parameterNames,outputNames )
 %OPTIMIZERFORCES Generates a FORCES Pro solver from a YALMIP problem formulation
 %
 %   solver = OPTIMIZERFORCES(constraint,objective,codeoptions,parameters,solverOutputs)
@@ -27,6 +27,15 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
 %                       objects whose value(s) should be returned by the
 %                       solver, can be a linear combination of decision
 %                       variables and parameters
+%       parameterNames: (optional) Cell array of strings with names for
+%                       parameters that will, for example, be used in the
+%                       Simulink block. If names are not specified, they
+%                       will be auto-generated.
+%       outputNames:    (optional) Cell array of strings with names for
+%                       outputs that will, for example, be used in the
+%                       Simulink block. If names are not specified, they
+%                       will be auto-generated.
+%
 %   Outputs:
 %       solver:         reference to OPTIMIZERFORCES object. Use this to
 %                       call solver. Example:
@@ -64,25 +73,64 @@ if isempty(parameters)
     error('FORCES Pro does not support problems without parameters.');
 end
 
-if ~iscell(parameters) % we allow single parameters
-    parameters = {parameters}; % put single param into cell array
+% Read parameter names if they were passed along
+if nargin >= 6
+    if ~iscellstr(parameterNames)
+        error('parameterNames needs to be a cell array of strings.')
+    end
+    
+    % Fix names (make them valid and unique)
+    parameterNames = matlab.lang.makeValidName(parameterNames);
+    parameterNames = matlab.lang.makeUniqueStrings(parameterNames);
+elseif isa(solverOutputs,'sdpvar')
+    % Single parameter supplied, we might get its name!
+    name = inputname(4);
+    if ~isempty(name)
+        parameterNames = {name};
+    else
+        parameterNames = {};
+        warning(['No parameter names specified for solver. We recommend adding names for better code documentation.' ...
+        'For more info type ''help optimizerFORCES''.']);
+    end
+else
+    parameterNames = {};
+    warning(['No parameter names specified for solver. We recommend adding names for better code documentation.' ...
+        'For more info type ''help optimizerFORCES''.']);
 end
 
-% Read parameter and output names if they were passed along
-parser = inputParser;
-addParameter(parser,'ParameterNames',cell(1,0),@iscellstr);
-addParameter(parser,'OutputNames',cell(1,0),@iscellstr);
-parse(parser,varargin{:})
-paramNames = parser.Results.ParameterNames;
-outputNames = parser.Results.ParameterNames;
-
-% Fix parameter (make them valid & unique variables names)
-paramNames = matlab.lang.makeValidName(paramNames);
-paramNames = matlab.lang.makeUniqueStrings(paramNames);
+% Read output names if they were passed along
+if nargin >= 7
+    if ~iscellstr(parameterNames)
+        error('outputNames needs to be a cell array of strings.')
+    end
+    
+    % Fix names (make them valid and unique)
+    outputNames = matlab.lang.makeValidName(outputNames);
+    outputNames = matlab.lang.makeUniqueStrings(outputNames);
+elseif isa(solverOutputs,'sdpvar')
+    % Single output supplied, we might get its name!
+    name = inputname(5);
+    if ~isempty(name)
+        outputNames = {name};
+    else
+        outputNames = {};
+        warning(['No output names specified for solver. We recommend adding names for better code documentation.' ...
+        'For more info type ''help optimizerFORCES''.']);
+    end
+else
+    outputNames = {};
+    warning(['No output names specified for solver. We recommend adding names for better code documentation.' ...
+        'For more info type ''help optimizerFORCES''.']);
+end
 
 % Create missing parameter names
-while numel(paramNames) < numel(parameters)
-    paramNames{end+1} = sprintf('param%u', numel(paramNames)+1);
+while numel(parameterNames) < numel(parameters)
+    parameterNames{end+1} = sprintf('param%u', numel(parameterNames)+1);
+end
+
+% We allow single parameters --> wrap them in a cell array
+if ~iscell(parameters) 
+    parameters = {parameters}; % put single param into cell array
 end
 
 % Prepare struct that is going to be converted into the optimizerFORCES
@@ -94,10 +142,6 @@ if ~iscell(solverOutputs)
     solverOutputs = {solverOutputs};
     sys.outputIsCell = 0;
 end
-
-% Fix parameter (make them valid & unique variables names)
-outputNames = matlab.lang.makeValidName(outputNames);
-outputNames = matlab.lang.makeUniqueStrings(outputNames);
 
 % Create missing parameter names
 while numel(outputNames) < numel(solverOutputs)
@@ -229,7 +273,7 @@ end
 sys.stages = stages;
 sys.numSolvers = numel(stages);
 sys.params = params;
-sys.paramNames = paramNames;
+sys.paramNames = parameterNames;
 sys.outputNames = outputNames;
 sys.outputFORCES = outputFORCES;
 sys.qcqpParams = qcqpParams;
