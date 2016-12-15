@@ -46,9 +46,6 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
 disp('YALMIP-to-FORCES code generator')
 disp('-------------------------------')
 
-% Temporarily allow all warnings
-w = warning('on','all');
-
 % Check if YALMIP is installed
 if ~exist('optimizer','file')
     error('YALMIP could not be found. Please make sure it is installed correctly.')
@@ -92,12 +89,12 @@ elseif isa(solverOutputs,'sdpvar')
         parameterNames = {name};
     else
         parameterNames = {};
-        warning(['No parameter names specified for solver. We recommend adding names for better code documentation.' ...
+        warning('Y2F:noParameterNames',['No parameter names specified for solver. We recommend adding names for better code documentation.' ...
         'For more info type ''help optimizerFORCES''.']);
     end
 else
     parameterNames = {};
-    warning(['No parameter names specified for solver. We recommend adding names for better code documentation.' ...
+    warning('Y2F:noParameterNames',['No parameter names specified for solver. We recommend adding names for better code documentation.' ...
         'For more info type ''help optimizerFORCES''.']);
 end
 
@@ -117,12 +114,12 @@ elseif isa(solverOutputs,'sdpvar')
         outputNames = {name};
     else
         outputNames = {};
-        warning(['No output names specified for solver. We recommend adding names for better code documentation.' ...
+        warning('Y2F:noOutputNames',['No output names specified for solver. We recommend adding names for better code documentation.' ...
         'For more info type ''help optimizerFORCES''.']);
     end
 else
     outputNames = {};
-    warning(['No output names specified for solver. We recommend adding names for better code documentation.' ...
+    warning('Y2F:noOutputNames',['No output names specified for solver. We recommend adding names for better code documentation.' ...
         'For more info type ''help optimizerFORCES''.']);
 end
 
@@ -317,10 +314,6 @@ disp('Generating Simulink Block...');
 
 generateSimulinkBlock(sys);
 
-
-% Restore warning state
-warning(w);
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
     function [internalmodel,H,f,Aineq,bineq,Aeq,beq,lb,ub] = getQpAndModelFromYALMIP()
@@ -500,7 +493,7 @@ warning(w);
                 % Check bounds
                 if lb(i) ~= -Inf || ub(i) ~= Inf
                     beep
-                    warning('Bounds on parameters have no effect.')
+                    warning('Y2F:parameterBounds','Bounds on parameters have no effect.')
                 end
 
                 % Quadratic constraints don't have to be checked
@@ -544,7 +537,7 @@ warning(w);
                         % Check bounds
                         if lb(i) ~= -Inf || ub(i) ~= Inf
                             beep
-                            warning('Bounds on quadratic variables have no effect.')
+                            warning('Y2F:quadraticTermBounds','Bounds on quadratic terms have no effect.')
                         end
 
                         % Check if variable is used in Aineq --> put in quad. ineq.
@@ -588,7 +581,7 @@ warning(w);
                             % Check bounds
                             if lb(i) ~= -Inf || ub(i) ~= Inf
                                 beep
-                                warning('Bounds on bilinear terms have no effect.')
+                                warning('Y2F:bilinearTermBounds','Bounds on bilinear terms have no effect.')
                             end
 
                             % Check if variable is used in Aineq --> put in quad. ineq.
@@ -645,7 +638,7 @@ warning(w);
                             % Check bounds
                             if lb(i) ~= -Inf || ub(i) ~= Inf
                                 beep
-                                warning('Bounds on bilinear terms have no effect.')
+                                warning('Y2F:bilinearTermBounds','Bounds on bilinear terms have no effect.')
                             end
                         end
                     end
@@ -715,7 +708,7 @@ warning(w);
                     % Check bounds
                     if lb(i) ~= -Inf || ub(i) ~= Inf
                         beep
-                        warning('Bounds on nonlinear variables have no effect.')
+                        warning('Y2F:nonlinearTermBounds','Bounds on nonlinear terms have no effect.')
                     end
 
                     % Check inequalities
@@ -968,7 +961,7 @@ warning(w);
 
         if ~issymmetric(H_temp)
             beep
-            warning('Hessian is not symmetric.')
+            warning('Y2F:nonsymmetricHessian','Hessian is not symmetric.')
         end
 
         % Check if bounds make sense
@@ -980,12 +973,14 @@ warning(w);
         for k=1:numel(Q_temp)
             if ~issymmetric(Q_temp{k})
                 beep
-                warning('One of the quadratic constraint matrices is not symmetric.')
+                warning('Y2F:nonsymmetricQuadraticConstraint', ...
+                    'One of the quadratic constraint matrices is not symmetric.')
             end
 
             if isempty(qcqpParams.Q) && any(eig(Q{k}) < -1e-7) && any(eig(Q{k}) > -1e-7)
                 beep
-                warning('One of the quadratic constraint matrices is indefinite.')
+                warning('Y2F:indefiniteQuadraticConstraint', ...
+                    'One of the quadratic constraint matrices is indefinite.')
             end
         end
         

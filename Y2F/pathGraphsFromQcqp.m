@@ -23,7 +23,7 @@ end
 
 if ~checkIfGraphIsConnected(G)
     beep
-    warning('Problem is separable. Consider using multiple solvers.');
+    warning('Y2F:separableProblem','Problem is separable. Consider using multiple solvers.');
 end
 
 % Find components of graph
