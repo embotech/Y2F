@@ -106,22 +106,26 @@ end
 
 
 %% Call YALMIP and convert QP into FORCES format
-disp('Using YALMIP to convert problem into QP...')
-
+fprintf('Using YALMIP to convert problem into QP...')
+tic;
 [internalmodel,H,f,Aineq,bineq,Aeq,beq,lb,ub] = getQpAndModelFromYALMIP();
+yalmiptime=toc;
+fprintf('   [OK, %5.3fs]\n', yalmiptime);
 
 %% Assemble parameters & convert quadratic variables
 % Quadratic inequalities are not recognized by YALMIP
 % Information is stored in internalmodel
 
-disp('Extract parameters and quadratic inequalities from YALMIP model...')
-
+fprintf('Extract parameters and quadratic inequalities from YALMIP model...')
+tic;
 [qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap] = buildParamsAndQuadIneqs();
+extractStagesTime=toc;
+fprintf('   [OK, %5.3fs]\n', extractStagesTime);
 
 %%
 
-disp('Assembling stages...')
-
+fprintf('Assembling stages...')
+tic;
 % Construct matrices where parametric elements are == 1
 % This is necessary to build graph and recognise infeasible problems
 H_temp = H;
@@ -200,9 +204,12 @@ end
 % Assemble outputs
 outputFORCES = buildOutput();
 
+assembleStagesTime=toc;
+fprintf('   [OK, %5.3fs]\n', assembleStagesTime);
+
+%% Generate solver using FORCES
 disp('Generating solver using FORCES...')
 
-% Generate solver using FORCES
 success = 1;
 default_codeoptions = codeoptions;
 codeoptions = cell(1,numel(stages));
@@ -843,8 +850,8 @@ warning(w);
             assert(length(id) == 1);
             k = quadIneq(2,id);
         else
-            Q{end+1} = zeros(size(H));%spalloc(size(H,1),size(H,2),0);%zeros(size(H));
-            l(:,end+1) = zeros(size(H,1),1);%spalloc(size(H,1),1,0); %zeros(size(H,1),1);
+            Q{end+1} = spalloc(size(H,1),size(H,2),0);%zeros(size(H));
+            l(:,end+1) = spalloc(size(H,1),1,0); %zeros(size(H,1),1);
             r(end+1) = 0;
             k = length(r);
             quadIneq(:,end+1) = [rowIdx;k];

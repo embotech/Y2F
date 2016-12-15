@@ -52,8 +52,8 @@ if (ispc)
 end
 
 if exist( [cName '.c'], 'file' ) && exist( [mexName '.c'], 'file' )
-    mex('-c','-O','-outdir',[solverName '/interface'],[cName '.c'])
-    mex('-c','-O','-outdir',[solverName '/interface'],[mexName '.c'])
+    mex('-c','-g','-outdir',[solverName '/interface'],[cName '.c'])
+    mex('-c','-g','-outdir',[solverName '/interface'],[mexName '.c'])
     if( ispc ) % PC - we need additional libraries
         mex([solverName '/interface/*.obj'], '-output', outputName, ...
             ['-L' solverName '/lib'], libs{:}, '-llibdecimal', ...

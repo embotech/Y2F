@@ -189,8 +189,8 @@ for i=1:G.n
                 quad_idx = sort(unique(quad_idx));
                 
                 stages(i).ineq.q.idx{end+1} = quad_idx;
-                stages(i).ineq.q.Q{end+1} = Q{k}(idx(quad_idx),idx(quad_idx));
-                stages(i).ineq.q.l{end+1} = l(idx(quad_idx),k); % linear terms
+                stages(i).ineq.q.Q{end+1} = full(Q{k}(idx(quad_idx),idx(quad_idx)));
+                stages(i).ineq.q.l{end+1} = full(l(idx(quad_idx),k)); % linear terms
                 stages(i).ineq.q.r(end+1) = r(k); % RHSs 
                 stages(i).dims.q = stages(i).dims.q + 1;
                     
