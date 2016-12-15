@@ -68,6 +68,9 @@ switch nargin
         error('Output(s) not found')
 end
 
+% Make valid solver name
+codeoptions.name = matlab.lang.makeValidName(codeoptions.name);
+
 % We need parameters
 if isempty(parameters)
     error('FORCES Pro does not support problems without parameters.');
