@@ -295,6 +295,7 @@ disp('Generating C interface...');
 %generateSolverInterfaceCode(sys);
 generateCInterfaceCode(sys);
 generateMEXInterfaceCode(sys);
+generateSimulinkInterfaceCode(sys);
 
 % Compile MEX code
 disp('Compiling MEX code for solver interface...');
@@ -305,6 +306,16 @@ compileSolverInterfaceCode(sys);
 disp('Writing help file...');
 
 generateHelp(sys);
+
+% Compile Simulink code
+disp('Compiling Simulink code for solver interface...');
+
+compileSimulinkInterfaceCode(sys);
+
+% Compile Simulink code
+disp('Generating Simulink Block...');
+
+generateSimulinkBlock(sys);
 
 
 % Restore warning state
