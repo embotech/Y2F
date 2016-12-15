@@ -248,17 +248,11 @@ disp('Generating C interface...');
 %generateSolverInterfaceCode(sys);
 generateCInterfaceCode(sys);
 generateMEXInterfaceCode(sys);
-generateSimulinkInterfaceCode(sys);
 
 % Compile MEX code
 disp('Compiling MEX code for solver interface...');
 
 compileSolverInterfaceCode(sys);
-
-% Compile Simulink code
-disp('Compiling code for Simulink interface...');
-
-compileSimulinkInterfaceCode(sys);
 
 % Generate help file
 disp('Writing help file...');

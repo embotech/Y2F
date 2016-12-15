@@ -5,6 +5,14 @@ solverName = self.default_codeoptions.name;
 cName = [solverName '/interface/' solverName];
 mexName = [solverName '/interface/' solverName '_mex'];
 outputName = ['"' solverName '"'];
+
+% copy the O-files of all solvers into /interface
+% we'll delete them later, but this makes compilation easier
+for i=1:self.numSolvers
+    if( ~ispc )
+        copyfile(sprintf('%s/obj/%s.o',self.codeoptions{i}.name,self.codeoptions{i}.name), sprintf('%s/interface',solverName), 'f');
+    end
+end
     
 % move the (necessary) files of all solvers to the new directory and delete
 % the folders of the "internal" solvers
@@ -33,14 +41,6 @@ for i=1:self.numSolvers
     % Delete files
     rmdir(self.codeoptions{i}.name, 's');
     delete([self.codeoptions{i}.name '*']);
-end
-
-% copy the O-files of all solvers into /interface
-% we'll delete them later, but this makes compilation easier
-for i=1:self.numSolvers
-    if( ~ispc )
-        copyfile(sprintf('%s/obj/%s.o',solverName,self.codeoptions{i}.name), sprintf('%s/interface',solverName), 'f');
-    end
 end
 
 % Create a list of internal solver libraries for Windows
