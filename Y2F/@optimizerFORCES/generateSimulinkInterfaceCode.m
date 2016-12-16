@@ -177,19 +177,23 @@ fprintf(fileID, '\n');
 fprintf(fileID, '	/* Simulink data */\n');
 
 for i=1:self.numParams
-    fprintf(fileID, '	const real_T *%s = (const real_T*) ssGetInputPortSignal(S,%u);\n',self.paramNames{i},i-1);
+    fprintf(fileID, '	const real_T *param_%s = (const real_T*) ssGetInputPortSignal(S,%u);\n',self.paramNames{i},i-1);
 end
 fprintf(fileID, '	\n');
 
 for i=1:numel(self.outputSize)
-    fprintf(fileID, '    real_T *%s = (real_T*) ssGetOutputPortSignal(S,%u);\n',self.outputNames{i},i-1);
+    fprintf(fileID, '    real_T *output_%s = (real_T*) ssGetOutputPortSignal(S,%u);\n',self.outputNames{i},i-1);
 end
 fprintf(fileID, '\n');
 fprintf(fileID, '   /* Solver data */\n');
 fprintf(fileID, '	%s_params params;\n',solverName);
 fprintf(fileID, '	%s_output output;\n',solverName);
 fprintf(fileID, '	%s_info info;	\n',solverName);
-fprintf(fileID, '	int exitflag;\n');
+if self.numSolvers == 1
+    fprintf(fileID, '	int exitflag;\n');
+else
+    fprintf(fileID, '	int* exitflag;\n');
+end
 
 fprintf(fileID, '\n');
 fprintf(fileID, '	/* Extra NMPC data */\n');
@@ -197,7 +201,7 @@ fprintf(fileID, '\n');
 
 fprintf(fileID, '	/* Copy inputs */\n');
 for i=1:self.numParams
-    fprintf(fileID, '	for( i=0; i<%u; i++){ params.%s[i] = (double) %s[i]; }\n',prod(self.paramSizes(i,:)),self.paramNames{i},self.paramNames{i});
+    fprintf(fileID, '	for( i=0; i<%u; i++){ params.%s[i] = (double) param_%s[i]; }\n',prod(self.paramSizes(i,:)),self.paramNames{i},self.paramNames{i});
 end
 fprintf(fileID, '\n');
 
@@ -227,7 +231,7 @@ fprintf(fileID, '\n');
 
 fprintf(fileID, '	/* Copy outputs */\n');
 for i=1:numel(self.outputSize)
-    fprintf(fileID, '	for( i=0; i<%u; i++){ %s[i] = (real_T) output.%s[i]; }\n',prod(self.outputSize{i}),self.outputNames{i},self.outputNames{i});
+    fprintf(fileID, '	for( i=0; i<%u; i++){ output_%s[i] = (real_T) output.%s[i]; }\n',prod(self.outputSize{i}),self.outputNames{i},self.outputNames{i});
 end
 fprintf(fileID, '}\n');
 
