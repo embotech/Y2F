@@ -1,4 +1,4 @@
-function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,parameters,solverOutputs,varargin )
+function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,parameters,solverOutputs,parameterNames,outputNames )
 %OPTIMIZERFORCES Generates a FORCES Pro solver from a YALMIP problem formulation
 %
 %   solver = OPTIMIZERFORCES(constraint,objective,codeoptions,parameters,solverOutputs)
@@ -27,6 +27,15 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
 %                       objects whose value(s) should be returned by the
 %                       solver, can be a linear combination of decision
 %                       variables and parameters
+%       parameterNames: (optional) Cell array of strings with names for
+%                       parameters that will, for example, be used in the
+%                       Simulink block. If names are not specified, they
+%                       will be auto-generated.
+%       outputNames:    (optional) Cell array of strings with names for
+%                       outputs that will, for example, be used in the
+%                       Simulink block. If names are not specified, they
+%                       will be auto-generated.
+%
 %   Outputs:
 %       solver:         reference to OPTIMIZERFORCES object. Use this to
 %                       call solver. Example:
@@ -36,9 +45,6 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
 
 disp('YALMIP-to-FORCES code generator')
 disp('-------------------------------')
-
-% Temporarily allow all warnings
-w = warning('on','all');
 
 % Check if YALMIP is installed
 if ~exist('optimizer','file')
@@ -59,30 +65,72 @@ switch nargin
         error('Output(s) not found')
 end
 
+% Make valid solver name
+codeoptions.name = matlab.lang.makeValidName(codeoptions.name);
+
 % We need parameters
 if isempty(parameters)
     error('FORCES Pro does not support problems without parameters.');
 end
 
-if ~iscell(parameters) % we allow single parameters
-    parameters = {parameters}; % put single param into cell array
+% Read parameter names if they were passed along
+if nargin >= 6
+    if ~iscellstr(parameterNames)
+        error('parameterNames needs to be a cell array of strings.')
+    end
+    
+    % Fix names (make them valid and unique)
+    parameterNames = matlab.lang.makeValidName(parameterNames);
+    parameterNames = matlab.lang.makeUniqueStrings(parameterNames);
+elseif isa(solverOutputs,'sdpvar')
+    % Single parameter supplied, we might get its name!
+    name = inputname(4);
+    if ~isempty(name)
+        parameterNames = {name};
+    else
+        parameterNames = {};
+        warning('Y2F:noParameterNames',['No parameter names specified for solver. We recommend adding names for better code documentation.' ...
+        'For more info type ''help optimizerFORCES''.']);
+    end
+else
+    parameterNames = {};
+    warning('Y2F:noParameterNames',['No parameter names specified for solver. We recommend adding names for better code documentation.' ...
+        'For more info type ''help optimizerFORCES''.']);
 end
 
-% Read parameter and output names if they were passed along
-parser = inputParser;
-addParameter(parser,'ParameterNames',cell(1,0),@iscellstr);
-addParameter(parser,'OutputNames',cell(1,0),@iscellstr);
-parse(parser,varargin{:})
-paramNames = parser.Results.ParameterNames;
-outputNames = parser.Results.ParameterNames;
-
-% Fix parameter (make them valid & unique variables names)
-paramNames = matlab.lang.makeValidName(paramNames);
-paramNames = matlab.lang.makeUniqueStrings(paramNames);
+% Read output names if they were passed along
+if nargin >= 7
+    if ~iscellstr(parameterNames)
+        error('outputNames needs to be a cell array of strings.')
+    end
+    
+    % Fix names (make them valid and unique)
+    outputNames = matlab.lang.makeValidName(outputNames);
+    outputNames = matlab.lang.makeUniqueStrings(outputNames);
+elseif isa(solverOutputs,'sdpvar')
+    % Single output supplied, we might get its name!
+    name = inputname(5);
+    if ~isempty(name)
+        outputNames = {name};
+    else
+        outputNames = {};
+        warning('Y2F:noOutputNames',['No output names specified for solver. We recommend adding names for better code documentation.' ...
+        'For more info type ''help optimizerFORCES''.']);
+    end
+else
+    outputNames = {};
+    warning('Y2F:noOutputNames',['No output names specified for solver. We recommend adding names for better code documentation.' ...
+        'For more info type ''help optimizerFORCES''.']);
+end
 
 % Create missing parameter names
-while numel(paramNames) < numel(parameters)
-    paramNames{end+1} = sprintf('param%u', numel(paramNames)+1);
+while numel(parameterNames) < numel(parameters)
+    parameterNames{end+1} = sprintf('param%u', numel(parameterNames)+1);
+end
+
+% We allow single parameters --> wrap them in a cell array
+if ~iscell(parameters) 
+    parameters = {parameters}; % put single param into cell array
 end
 
 % Prepare struct that is going to be converted into the optimizerFORCES
@@ -94,10 +142,6 @@ if ~iscell(solverOutputs)
     solverOutputs = {solverOutputs};
     sys.outputIsCell = 0;
 end
-
-% Fix parameter (make them valid & unique variables names)
-outputNames = matlab.lang.makeValidName(outputNames);
-outputNames = matlab.lang.makeUniqueStrings(outputNames);
 
 % Create missing parameter names
 while numel(outputNames) < numel(solverOutputs)
@@ -229,7 +273,7 @@ end
 sys.stages = stages;
 sys.numSolvers = numel(stages);
 sys.params = params;
-sys.paramNames = paramNames;
+sys.paramNames = parameterNames;
 sys.outputNames = outputNames;
 sys.outputFORCES = outputFORCES;
 sys.qcqpParams = qcqpParams;
@@ -248,6 +292,7 @@ disp('Generating C interface...');
 %generateSolverInterfaceCode(sys);
 generateCInterfaceCode(sys);
 generateMEXInterfaceCode(sys);
+generateSimulinkInterfaceCode(sys);
 
 % Compile MEX code
 disp('Compiling MEX code for solver interface...');
@@ -259,9 +304,15 @@ disp('Writing help file...');
 
 generateHelp(sys);
 
+% Compile Simulink code
+disp('Compiling Simulink code for solver interface...');
 
-% Restore warning state
-warning(w);
+compileSimulinkInterfaceCode(sys);
+
+% Compile Simulink code
+disp('Generating Simulink Block...');
+
+generateSimulinkBlock(sys);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -442,7 +493,7 @@ warning(w);
                 % Check bounds
                 if lb(i) ~= -Inf || ub(i) ~= Inf
                     beep
-                    warning('Bounds on parameters have no effect.')
+                    warning('Y2F:parameterBounds','Bounds on parameters have no effect.')
                 end
 
                 % Quadratic constraints don't have to be checked
@@ -486,7 +537,7 @@ warning(w);
                         % Check bounds
                         if lb(i) ~= -Inf || ub(i) ~= Inf
                             beep
-                            warning('Bounds on quadratic variables have no effect.')
+                            warning('Y2F:quadraticTermBounds','Bounds on quadratic terms have no effect.')
                         end
 
                         % Check if variable is used in Aineq --> put in quad. ineq.
@@ -530,7 +581,7 @@ warning(w);
                             % Check bounds
                             if lb(i) ~= -Inf || ub(i) ~= Inf
                                 beep
-                                warning('Bounds on bilinear terms have no effect.')
+                                warning('Y2F:bilinearTermBounds','Bounds on bilinear terms have no effect.')
                             end
 
                             % Check if variable is used in Aineq --> put in quad. ineq.
@@ -587,7 +638,7 @@ warning(w);
                             % Check bounds
                             if lb(i) ~= -Inf || ub(i) ~= Inf
                                 beep
-                                warning('Bounds on bilinear terms have no effect.')
+                                warning('Y2F:bilinearTermBounds','Bounds on bilinear terms have no effect.')
                             end
                         end
                     end
@@ -657,7 +708,7 @@ warning(w);
                     % Check bounds
                     if lb(i) ~= -Inf || ub(i) ~= Inf
                         beep
-                        warning('Bounds on nonlinear variables have no effect.')
+                        warning('Y2F:nonlinearTermBounds','Bounds on nonlinear terms have no effect.')
                     end
 
                     % Check inequalities
@@ -910,7 +961,7 @@ warning(w);
 
         if ~issymmetric(H_temp)
             beep
-            warning('Hessian is not symmetric.')
+            warning('Y2F:nonsymmetricHessian','Hessian is not symmetric.')
         end
 
         % Check if bounds make sense
@@ -922,12 +973,14 @@ warning(w);
         for k=1:numel(Q_temp)
             if ~issymmetric(Q_temp{k})
                 beep
-                warning('One of the quadratic constraint matrices is not symmetric.')
+                warning('Y2F:nonsymmetricQuadraticConstraint', ...
+                    'One of the quadratic constraint matrices is not symmetric.')
             end
 
             if isempty(qcqpParams.Q) && any(eig(Q{k}) < -1e-7) && any(eig(Q{k}) > -1e-7)
                 beep
-                warning('One of the quadratic constraint matrices is indefinite.')
+                warning('Y2F:indefiniteQuadraticConstraint', ...
+                    'One of the quadratic constraint matrices is indefinite.')
             end
         end
         
