@@ -195,17 +195,11 @@ tic;
 % Construct matrices where parametric elements are == 1
 % This is necessary to build graph and recognise infeasible problems
 H_temp = H;
-for i=1:numel(qcqpParams.H)
-    H_temp(qcqpParams.H(i).maps2index) = 1;
-end
+H_temp([qcqpParams.H.maps2index]) = 1;
 Aineq_temp = Aineq;
-for i=1:numel(qcqpParams.Aineq)
-    Aineq_temp(qcqpParams.Aineq(i).maps2index) = 1;
-end
+Aineq_temp([qcqpParams.Aineq.maps2index]) = 1;
 Aeq_temp = Aeq;
-for i=1:numel(qcqpParams.Aeq)
-    Aeq_temp(qcqpParams.Aeq(i).maps2index) = 1;
-end
+Aeq_temp([qcqpParams.Aeq.maps2index]) = 1;
 Q_temp = Q;
 for i=1:numel(qcqpParams.Q)
     Q_temp{qcqpParams.Q(i).maps2mat}(qcqpParams.Q(i).maps2index) = 1;
