@@ -24,6 +24,8 @@ function [stages, params, standardParamValues, forcesParamMap] = generateStagesF
 %
 % (c) Gian Ulli and embotech GmbH, Zurich, Switzerland, 2013-2016.
 
+SPARSITY_THRESHOLD = 0.2;
+
 if ~checkIfGraphIsPathGraph(G)
     error('Path is not a path graph. Other structures are not supported.')
 end
@@ -43,14 +45,12 @@ if nargout >= 4
 end
 
 % Construct matrices where parametric elements are == 1
+H_temp = H;
+H_temp([qcqpParams.H.maps2index]) = 1;
 Aineq_temp = Aineq;
-for i=1:numel(qcqpParams.Aineq)
-    Aineq_temp(qcqpParams.Aineq(i).maps2index) = 1;
-end
+Aineq_temp([qcqpParams.Aineq.maps2index]) = 1;
 Aeq_temp = Aeq;
-for i=1:numel(qcqpParams.Aeq)
-    Aeq_temp(qcqpParams.Aeq(i).maps2index) = 1;
-end
+Aeq_temp([qcqpParams.Aeq.maps2index]) = 1;
 Q_temp = Q;
 for i=1:numel(qcqpParams.Q)
     Q_temp{qcqpParams.Q(i).maps2mat}(qcqpParams.Q(i).maps2index) = 1;
@@ -85,11 +85,23 @@ for i=1:G.n
     stages(i).cost.f = f(idx); % linear term
     
     % Is H a parameter?
-    tic;
-    findRelevantQcqpParamsAndCreateForcesParameter( ...
-            i,idx,idx,size(H),qcqpParams.H,qcqpParamIndices.H,'cost.H');
-    createParamTime = createParamTime + toc;
-    
+    local_H_temp = H_temp(idx,idx);
+    if all(local_H_temp(~eye(length(idx))) == 0) % is H diagonal?
+        tic;
+        param = findRelevantQcqpParamsAndCreateDiagonalForcesParameter( ...
+                i,idx,size(H),qcqpParams.H,qcqpParamIndices.H,'cost.H');
+        if ~isempty(param)
+            standardParamValues.(param.name) = stages(i).cost.H(1:(length(idx)+1):end);
+            stages(i).cost.H = [];
+        end
+        createParamTime = createParamTime + toc;
+    else % H not diagonal --> standard function
+        tic;
+        findRelevantQcqpParamsAndCreateForcesParameter( ...
+                i,idx,idx,size(H),qcqpParams.H,qcqpParamIndices.H,'cost.H');
+        createParamTime = createParamTime + toc;
+    end
+
     % Is f a parameter?
     tic;
     findRelevantQcqpParamsAndCreateForcesParameter( ...
@@ -187,10 +199,27 @@ for i=1:G.n
         stages(i).ineq.p.b = bineq(ineq_idx); % RHS of linear inequality
 
         % Is p.A a parameter?
-        tic;
-        findRelevantQcqpParamsAndCreateForcesParameter( ...
-                i,ineq_idx,idx,size(Aineq),qcqpParams.Aineq,qcqpParamIndices.Aineq,'ineq.p.A');
-        createParamTime = createParamTime + toc;
+        % compute sparsity
+        local_Aineq_temp = Aineq_temp(ineq_idx,idx);
+        nonzeros = find(local_Aineq_temp);
+        if length(nonzeros)/numel(Aineq_temp) <= SPARSITY_THRESHOLD % is Aineq sparse?
+            % compute location of nonzeros in big matrix
+            [i1, i2] = ind2sub(size(local_Aineq_temp),nonzeros);
+            nonzeros_idx = sub2ind(size(Aineq), ineq_idx(i1), idx(i2));
+            tic;
+            param = findRelevantQcqpParamsAndCreateSparseForcesParameter( ...
+                    i,nonzeros_idx,local_Aineq_temp,qcqpParams.Aineq,qcqpParamIndices.Aineq,'ineq.p.A');
+            if ~isempty(param)
+                standardParamValues.(param.name) = stages(i).ineq.p.A(nonzeros);
+                stages(i).ineq.p.A = [];
+            end
+            createParamTime = createParamTime + toc;
+        else % Aineq is dense
+            tic;
+            findRelevantQcqpParamsAndCreateForcesParameter( ...
+                    i,ineq_idx,idx,size(Aineq),qcqpParams.Aineq,qcqpParamIndices.Aineq,'ineq.p.A');
+            createParamTime = createParamTime + toc;
+        end
         
         % Is p.b a parameter?
         tic;
@@ -314,6 +343,73 @@ end
         else
             result = zeros(0,1);
         end
+    end
+
+    function param = findRelevantQcqpParamsAndCreateDiagonalForcesParameter( stage, row_idx, fullMatrixSize, qcqpParams, qcqpParamIndices, param_name)
+    % Helper function to create diagonal FORCES parameters if necessary
+    % Attention: standard value is not set by this function!
+    % Do it after calling it with 'standardParamValues.(param.name) = ...'
+    
+        param = [];
+    
+        % Find relevant QCQP parameters (=> check indices in big matrix)
+        element_idx = sub2ind(fullMatrixSize, row_idx, row_idx);
+        [relevant_params,param_local_idx] = ismember(qcqpParamIndices, element_idx); % find positions of parameters
+        % relevant_params(j) is 1 iff QCQP param at index j is needed
+        % param_local_idx(j) contains the (local) index of the element
+        % influenced by this parameter
+        
+        if any(relevant_params) % We have QCQP params --> create a FORCES param            
+            % Create FORCES param with standard value
+            param_id = sprintf('p_%u',p);
+            params(p) = newParam(param_id, stage, param_name, 'diag');
+            
+            % Make param map (additive parts of parameter, see help of
+            % generateStagesFromGraph)
+            forcesParamMap.(param_id) = zeros(4,0);
+            for j=find(relevant_params)
+                forcesParamMap.(param_id)(:,end+1) = [param_local_idx(j);...
+                                                      qcqpParams(j).factor;...
+                                                      yalmipParamMap(:,qcqpParams(j).maps2origparam)];
+            end
+            
+            param = params(p);
+            p = p+1;
+        end
+    
+    end
+
+    function param = findRelevantQcqpParamsAndCreateSparseForcesParameter( stage, nonzero_idx, sparsityPattern, qcqpParams, qcqpParamIndices, param_name)
+    % Helper function to create sparse FORCES parameters if necessary
+    % Attention: standard value is not set by this function!
+    % Do it after calling it with 'standardParamValues.(param.name) = ...'
+    
+        param = [];
+    
+        % Find relevant QCQP parameters (=> check indices in big matrix)
+        [relevant_params,param_local_idx] = ismember(qcqpParamIndices, nonzero_idx); % find positions of parameters
+        % relevant_params(j) is 1 iff QCQP param at index j is needed
+        % param_local_idx(j) contains the (local) index of the element
+        % influenced by this parameter
+        
+        if any(relevant_params) % We have QCQP params --> create a FORCES param
+            % Create FORCES param
+            param_id = sprintf('p_%u',p);
+            params(p) = newParam(param_id, stage, param_name, 'sparse', sparsityPattern);
+            
+            % Make param map (additive parts of parameter, see help of
+            % generateStagesFromGraph)
+            forcesParamMap.(param_id) = zeros(4,0);
+            for j=find(relevant_params)
+                forcesParamMap.(param_id)(:,end+1) = [param_local_idx(j);...
+                                                      qcqpParams(j).factor;...
+                                                      yalmipParamMap(:,qcqpParams(j).maps2origparam)];
+            end
+
+            param = params(p);
+            p = p+1;
+        end
+    
     end
 
     function param = findRelevantQcqpParamsAndCreateForcesParameter( stage, row_idx, col_idx, fullMatrixSize, qcqpParams, qcqpParamIndices, param_name, maps2mat)
