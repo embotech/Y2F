@@ -39,7 +39,7 @@ for i=1:numel(components)
     if any(ismember(outputIndices, cell2mat(components{i}.vertices)))
         % Construct stages using path graph
         [stages_temp,params_temp,standardParamValues_temp,forcesParamMap_temp] = generateStagesFromGraph(components{i},H,f,Aineq,bineq,Aeq,beq,l,Q,r,lb,ub,qcqpParams,yalmipParamMap);
-
+        
         % Hook new stages together with other stages
         stages{end+1} = stages_temp;
         params{end+1} = params_temp;

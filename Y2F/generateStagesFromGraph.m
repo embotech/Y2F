@@ -56,6 +56,8 @@ for i=1:numel(qcqpParams.l)
 end
 
 % Go through all stages (and create them)
+status = y2f_progressbar([],0,G.n,30);
+createParamTime = 0;
 for i=1:G.n
     idx = G.vertices{i}; % sorting just to make sure code below works
     stages(i).dims.n = length(idx); % length of stage variable zi 
@@ -71,13 +73,17 @@ for i=1:G.n
             % We have a diagonal H --> create a diagonal parameter
             createDiagonalCostParameter(i, relevantParams, idx);
         else % H is not diagonal --> do the standard thing
+            tic;
             createParameter('H', i, relevantParams, size(H), idx, idx, 'cost.H');
+            createParamTime = createParamTime + toc;
         end
     end
     % Is f a parameter?
     relevantParams = findRelevantParams(idx,1,size(f),qcqpParams.f);
     if ~isempty(relevantParams)
+        tic;
         createParameter('f', i, relevantParams, size(f), idx, 1, 'cost.f');
+        createParamTime = createParamTime + toc;
     end
     
     % Select relevant equalities and set the constraints
@@ -106,20 +112,28 @@ for i=1:G.n
     % Is C a parameter?
     relevantParams = findRelevantParams(eq_idx,last_idx,size(Aeq),qcqpParams.Aeq);
     if ~isempty(relevantParams) && i > 1
+        tic;
         createParameter('Aeq', i-1, relevantParams, size(Aeq), eq_idx, last_idx, 'eq.C');
+        createParamTime = createParamTime + toc;
     end
     % Is D a parameter?
     relevantParams = findRelevantParams(eq_idx,idx,size(Aeq),qcqpParams.Aeq);
     if ~isempty(relevantParams)
+        tic;
         createParameter('Aeq', i, relevantParams, size(Aeq), eq_idx, idx, 'eq.D');
+        createParamTime = createParamTime + toc;
     end
     % Is c a parameter?
     relevantParams = findRelevantParams(eq_idx,1,size(beq),qcqpParams.beq);
     if ~isempty(relevantParams)
         if d1IsSet
+            tic;
             createParameter('beq', i, relevantParams, size(beq), eq_idx, 1, 'eq.c');
+            createParamTime = createParamTime + toc;
         else
+            tic;
             createParameter('beq', i-1, relevantParams, size(beq), eq_idx, 1, 'eq.c');
+            createParamTime = createParamTime + toc;
         end
     end
     
@@ -132,7 +146,9 @@ for i=1:G.n
     % Is lb a parameter?
     relevantParams = findRelevantParams(idx,1,size(lb),qcqpParams.lb);
     if ~isempty(relevantParams)
+        tic;
         createParameter('lb', i, relevantParams, size(lb), idx(stages(i).ineq.b.lbidx), 1, 'ineq.b.lb');
+        createParamTime = createParamTime + toc;
     end
     
     % Upper bounds
@@ -144,7 +160,9 @@ for i=1:G.n
     % Is ub a parameter?
     relevantParams = findRelevantParams(idx,1,size(ub),qcqpParams.ub);
     if ~isempty(relevantParams)
+        tic;
         createParameter('ub', i, relevantParams, size(ub), idx(stages(i).ineq.b.ubidx), 1, 'ineq.b.ub');
+        createParamTime = createParamTime + toc;
     end
     
     % Linear inequalities
@@ -157,12 +175,16 @@ for i=1:G.n
         % Is p.A a parameter?
         relevantParams = findRelevantParams(ineq_idx,idx,size(Aineq),qcqpParams.Aineq);
         if ~isempty(relevantParams)
+            tic;
             createParameter('Aineq', i, relevantParams, size(Aineq), ineq_idx, idx, 'ineq.p.A');
+            createParamTime = createParamTime + toc;
         end
         % Is p.b a parameter?
         relevantParams = findRelevantParams(ineq_idx,1,size(bineq),qcqpParams.bineq);
         if ~isempty(relevantParams)
+            tic;
             createParameter('bineq', i, relevantParams, size(bineq), ineq_idx, 1, 'ineq.p.b');
+            toc;
         end
     end
     
@@ -287,6 +309,8 @@ for i=1:G.n
     end
     
     last_idx = idx;
+    
+    status = y2f_progressbar(status,i,G.n,30);
 end
 
     function createParameter(matrix, stage, relevantParams, matrixSize, row_idx, col_idx, name)
@@ -351,6 +375,7 @@ end
         p = p + 1;
     end
             
+fprintf('\nTime spent in createParameter: %5.1f seconds\n', createParamTime);
 
 end
 

@@ -110,7 +110,7 @@ fprintf('Using YALMIP to convert problem into QP...')
 tic;
 [internalmodel,H,f,Aineq,bineq,Aeq,beq,lb,ub] = getQpAndModelFromYALMIP();
 yalmiptime=toc;
-fprintf('   [OK, %5.3fs]\n', yalmiptime);
+fprintf('   [OK, %5.1f sec]\n', yalmiptime);
 
 %% Assemble parameters & convert quadratic variables
 % Quadratic inequalities are not recognized by YALMIP
@@ -120,7 +120,7 @@ fprintf('Extract parameters and quadratic inequalities from YALMIP model...')
 tic;
 [qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap] = buildParamsAndQuadIneqs();
 extractStagesTime=toc;
-fprintf('   [OK, %5.3fs]\n', extractStagesTime);
+fprintf('   [OK, %5.1f sec]\n', extractStagesTime);
 
 %%
 
@@ -205,7 +205,7 @@ end
 outputFORCES = buildOutput();
 
 assembleStagesTime=toc;
-fprintf('   [OK, %5.3fs]\n', assembleStagesTime);
+fprintf('   [OK, %5.1f sec]\n', assembleStagesTime);
 
 %% Generate solver using FORCES
 disp('Generating solver using FORCES...')
