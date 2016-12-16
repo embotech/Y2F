@@ -307,11 +307,10 @@ end
     % specified rows and columns 
     
         if ~isempty(row_idx) && ~isempty(col_idx)
-        m = length(row_idx);
-        n = length(col_idx);
-        cols = repmat(col_idx,m,1);
-        result = sub2ind(matrixSize, repmat(row_idx,1,n), cols(:)');
-        
+            m = length(row_idx);
+            n = length(col_idx);
+            cols = repmat(col_idx,m,1);
+            result = sub2ind(matrixSize, repmat(row_idx,1,n), cols(:)');
         else
             result = zeros(0,1);
         end
