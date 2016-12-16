@@ -60,6 +60,19 @@ for i=1:numel(qcqpParams.l)
     l_temp(qcqpParams.l(i).maps2index,qcqpParams.l(i).maps2mat) = 1;
 end
 
+% Assemble linear indices of all parameters (for faster checking afterwards)
+qcqpParamIndices.H = [qcqpParams.H.maps2index];
+qcqpParamIndices.f = [qcqpParams.f.maps2index];
+qcqpParamIndices.Aineq = [qcqpParams.Aineq.maps2index];
+qcqpParamIndices.bineq = [qcqpParams.bineq.maps2index];
+qcqpParamIndices.Aeq = [qcqpParams.Aeq.maps2index];
+qcqpParamIndices.beq = [qcqpParams.beq.maps2index];
+qcqpParamIndices.l = [qcqpParams.l.maps2index];
+qcqpParamIndices.Q = [qcqpParams.Q.maps2index];
+qcqpParamIndices.r = [qcqpParams.r.maps2index];
+qcqpParamIndices.lb = [qcqpParams.lb.maps2index];
+qcqpParamIndices.ub = [qcqpParams.ub.maps2index];
+
 % Go through all stages (and create them)
 barwidth = 30;
 %status = y2f_progressbar([],0,G.n,barwidth);
@@ -71,27 +84,17 @@ for i=1:G.n
     stages(i).cost.H = H(idx,idx); % Hessian
     stages(i).cost.f = f(idx); % linear term
     
-    % Is H a parameter? (TODO: H is a special case! Diagonal?!)
-    relevantParams = findRelevantParams(idx,idx,size(H),qcqpParams.H);
-    if ~isempty(relevantParams) % Yes!
-        % Check if H is diagonal
-        if all(stages(i).cost.H(~eye(length(idx))) == 0) && ... % nondiagonal entries are zero
-                all(ismember([qcqpParams.H(relevantParams).maps2index], sub2ind(size(H),idx,idx))) % all parameters affect diagonal entries
-            % We have a diagonal H --> create a diagonal parameter
-            createDiagonalCostParameter(i, relevantParams, idx);
-        else % H is not diagonal --> do the standard thing
-            tic;
-            createParameter('H', i, relevantParams, size(H), idx, idx, 'cost.H');
-            createParamTime = createParamTime + toc;
-        end
-    end
+    % Is H a parameter?
+    tic;
+    findRelevantQcqpParamsAndCreateForcesParameter( ...
+            i,idx,idx,size(H),qcqpParams.H,qcqpParamIndices.H,'cost.H');
+    createParamTime = createParamTime + toc;
+    
     % Is f a parameter?
-    relevantParams = findRelevantParams(idx,1,size(f),qcqpParams.f);
-    if ~isempty(relevantParams)
-        tic;
-        createParameter('f', i, relevantParams, size(f), idx, 1, 'cost.f');
-        createParamTime = createParamTime + toc;
-    end
+    tic;
+    findRelevantQcqpParamsAndCreateForcesParameter( ...
+            i,idx,1,size(f),qcqpParams.f,qcqpParamIndices.f,'cost.f');
+    createParamTime = createParamTime + toc;
     
     % Select relevant equalities and set the constraints
     eq_idx = find(sum(Aeq_temp(:,idx)~=0, 2))';
@@ -115,31 +118,33 @@ for i=1:G.n
         end
         stages(i).eq.D = Aeq(eq_idx,idx);
     end
+    
+    % Create parameters only if there are equations
+    if ~isempty(eq_idx)
+        % Is C a parameter?
+        if i > 1
+            tic;
+            findRelevantQcqpParamsAndCreateForcesParameter( ...
+                    i-1,eq_idx,last_idx,size(Aeq),qcqpParams.Aeq,qcqpParamIndices.Aeq,'eq.C');
+            createParamTime = createParamTime + toc;
+        end
 
-    % Is C a parameter?
-    relevantParams = findRelevantParams(eq_idx,last_idx,size(Aeq),qcqpParams.Aeq);
-    if ~isempty(relevantParams) && i > 1
+        % Is D a parameter?
         tic;
-        createParameter('Aeq', i-1, relevantParams, size(Aeq), eq_idx, last_idx, 'eq.C');
+        findRelevantQcqpParamsAndCreateForcesParameter( ...
+                i,eq_idx,idx,size(Aeq),qcqpParams.Aeq,qcqpParamIndices.Aeq,'eq.D');
         createParamTime = createParamTime + toc;
-    end
-    % Is D a parameter?
-    relevantParams = findRelevantParams(eq_idx,idx,size(Aeq),qcqpParams.Aeq);
-    if ~isempty(relevantParams)
-        tic;
-        createParameter('Aeq', i, relevantParams, size(Aeq), eq_idx, idx, 'eq.D');
-        createParamTime = createParamTime + toc;
-    end
-    % Is c a parameter?
-    relevantParams = findRelevantParams(eq_idx,1,size(beq),qcqpParams.beq);
-    if ~isempty(relevantParams)
+
+        % Is c a parameter?
         if d1IsSet
             tic;
-            createParameter('beq', i, relevantParams, size(beq), eq_idx, 1, 'eq.c');
+            findRelevantQcqpParamsAndCreateForcesParameter( ...
+                    i,eq_idx,1,size(beq),qcqpParams.beq,qcqpParamIndices.beq,'eq.c');
             createParamTime = createParamTime + toc;
         else
             tic;
-            createParameter('beq', i-1, relevantParams, size(beq), eq_idx, 1, 'eq.c');
+            findRelevantQcqpParamsAndCreateForcesParameter( ...
+                    i-1,eq_idx,1,size(beq),qcqpParams.beq,qcqpParamIndices.beq,'eq.c');
             createParamTime = createParamTime + toc;
         end
     end
@@ -150,11 +155,12 @@ for i=1:G.n
     stages(i).ineq.b.lbidx = find(temp_lb ~= -Inf)'; % index vector for lower bounds
     stages(i).ineq.b.lb = temp_lb(temp_lb ~= -Inf);    % lower bounds
     
-    % Is lb a parameter?
-    relevantParams = findRelevantParams(idx,1,size(lb),qcqpParams.lb);
-    if ~isempty(relevantParams)
+    % Create parameter only if there are bounds
+    if ~isempty(stages(i).ineq.b.lbidx)
+        % Is lb a parameter?
         tic;
-        createParameter('lb', i, relevantParams, size(lb), idx(stages(i).ineq.b.lbidx), 1, 'ineq.b.lb');
+        findRelevantQcqpParamsAndCreateForcesParameter( ...
+                i,idx(stages(i).ineq.b.lbidx),1,size(lb),qcqpParams.lb,qcqpParamIndices.lb,'ineq.b.lb');
         createParamTime = createParamTime + toc;
     end
     
@@ -164,11 +170,12 @@ for i=1:G.n
     stages(i).ineq.b.ubidx = find(temp_ub ~= Inf)'; % index vector for upper bounds
     stages(i).ineq.b.ub = temp_ub(temp_ub ~= Inf);    % upper bounds
     
-    % Is ub a parameter?
-    relevantParams = findRelevantParams(idx,1,size(ub),qcqpParams.ub);
-    if ~isempty(relevantParams)
+    % Create parameter only if there are bounds
+    if ~isempty(stages(i).ineq.b.ubidx)
+        % Is ub a parameter?
         tic;
-        createParameter('ub', i, relevantParams, size(ub), idx(stages(i).ineq.b.ubidx), 1, 'ineq.b.ub');
+        findRelevantQcqpParamsAndCreateForcesParameter( ...
+                i,idx(stages(i).ineq.b.ubidx),1,size(ub),qcqpParams.ub,qcqpParamIndices.ub,'ineq.b.ub');
         createParamTime = createParamTime + toc;
     end
     
@@ -180,19 +187,16 @@ for i=1:G.n
         stages(i).ineq.p.b = bineq(ineq_idx); % RHS of linear inequality
 
         % Is p.A a parameter?
-        relevantParams = findRelevantParams(ineq_idx,idx,size(Aineq),qcqpParams.Aineq);
-        if ~isempty(relevantParams)
-            tic;
-            createParameter('Aineq', i, relevantParams, size(Aineq), ineq_idx, idx, 'ineq.p.A');
-            createParamTime = createParamTime + toc;
-        end
+        tic;
+        findRelevantQcqpParamsAndCreateForcesParameter( ...
+                i,ineq_idx,idx,size(Aineq),qcqpParams.Aineq,qcqpParamIndices.Aineq,'ineq.p.A');
+        createParamTime = createParamTime + toc;
+        
         % Is p.b a parameter?
-        relevantParams = findRelevantParams(ineq_idx,1,size(bineq),qcqpParams.bineq);
-        if ~isempty(relevantParams)
-            tic;
-            createParameter('bineq', i, relevantParams, size(bineq), ineq_idx, 1, 'ineq.p.b');
-            createParamTime = createParamTime + toc;
-        end
+        tic;
+        findRelevantQcqpParamsAndCreateForcesParameter( ...
+                i,ineq_idx,1,size(bineq),qcqpParams.bineq,qcqpParamIndices.bineq,'ineq.p.b');
+        createParamTime = createParamTime + toc;
     end
     
     
@@ -207,7 +211,7 @@ for i=1:G.n
         for k=1:numel(Q) % go through each quad. inequality
             subQ = Q_temp{k}(idx,idx);
             subL = l_temp(idx,k);
-            if ~isempty([find(subQ,1) find(subL,1)]) % Inequality is relevant
+            if any(any(subQ)) || any(subL) % Inequality is relevant
                 quad_idx = [];
                 for s=1:size(subQ,1)
                     quad_idx = [quad_idx find(subQ(s,:)~=0)];
@@ -226,69 +230,47 @@ for i=1:G.n
                 orig_idx = idx(quad_idx);
                 
                 % Is Q a param? (Q,l,r are special cases because of k)
-                relevantParams = findRelevantParams(idx,idx,size(Q{k}),qcqpParams.Q,k);
-                if ~isempty(relevantParams)
-                    params(p) = newParam(sprintf('p_%u',p), i, 'ineq.q.Q',stages(i).dims.q);
-                    standardParamValues.(sprintf('p_%u',p)) = stages(i).ineq.q.Q{stages(i).dims.q};
-                    stages(i).ineq.q.Q{stages(i).dims.q} = [];
-                    
-                    forcesParamMap.(sprintf('p_%u',p)) = zeros(4,0);
-                    paramSize = size(standardParamValues.(sprintf('p_%u',p)));
-                    for j=relevantParams
-                        for col=1:length(quad_idx)
-                            for row=1:length(quad_idx)
-                                value_idx = find(sub2ind(size(Q{k}),orig_idx(row),orig_idx(col)) == ...
-                                            qcqpParams.Q(j).maps2index);
-                                if length(value_idx) == 1
-                                    forcesParamMap.(sprintf('p_%u',p))(:,end+1) = [sub2ind(paramSize,row,col);...
-                                                                                   qcqpParams.Q(j).factor;...
-                                                                                   yalmipParamMap(:,qcqpParams.Q(j).maps2origparam)];
-                                elseif length(value_idx) > 1
-                                    error('Mistake in the new stages formulation')
-                                end
-                            end
-                        end
-                    end
-                    p = p + 1;
+                tic;
+                param = findRelevantQcqpParamsAndCreateForcesParameter( ...
+                    i,orig_idx,orig_idx,size(H),qcqpParams.Q,qcqpParamIndices.Q,'ineq.q.Q', ...
+                    k); % maps2mat argument!
+                % important: set maps2mat (not set in function) and set
+                % standard value
+                if ~isempty(param)
+                    params(p-1).maps2mat = stages(i).dims.q;
+                    standardParamValues.(param.name) = stages(i).ineq.q.Q{end};
+                    stages(i).ineq.q.Q{end} = [];
                 end
+                createParamTime = createParamTime + toc;
+                
                 % Is l a param?
-                relevantParams = findRelevantParams(idx,1,size(l(:,k)),qcqpParams.l,k);
-                if ~isempty(relevantParams)
-                    params(p) = newParam(sprintf('p_%u',p), i, 'ineq.q.l',stages(i).dims.q);
-                    standardParamValues.(sprintf('p_%u',p)) = stages(i).ineq.q.l{stages(i).dims.q};
-                    stages(i).ineq.q.l{stages(i).dims.q} = [];
-                    
-                    forcesParamMap.(sprintf('p_%u',p)) = zeros(4,0);
-                    for j=relevantParams
-                        for row=1:length(quad_idx)
-                            value_idx = find(orig_idx(row) == qcqpParams.l(j).maps2index);
-                            if length(value_idx) == 1
-                                forcesParamMap.(sprintf('p_%u',p))(:,end+1) = [row;...
-                                                                               qcqpParams.l(j).factor;...
-                                                                               yalmipParamMap(:,qcqpParams.l(j).maps2origparam)];
-                            elseif length(value_idx) > 1
-                                error('Mistake in the new stages formulation')
-                            end
-                        end
-                    end
-                    p = p + 1;
+                tic;
+                param = findRelevantQcqpParamsAndCreateForcesParameter( ...
+                    i,orig_idx,1,size(f),qcqpParams.l,qcqpParamIndices.l,'ineq.q.l', ...
+                    k); % maps2mat argument!
+                % important: set maps2mat (not set in function) and set
+                % standard value
+                if ~isempty(param)
+                    params(p-1).maps2mat = stages(i).dims.q;
+                    standardParamValues.(param.name) = stages(i).ineq.q.l{end};
+                    stages(i).ineq.q.l{end} = [];
                 end
+                createParamTime = createParamTime + toc;
+                
                 % Is r a param?
-                relevantParams = findRelevantParams(k,1,size(r),qcqpParams.r);
-                if ~isempty(relevantParams)
-                    assert(length(relevantParams)==1);
-                    params(p) = newParam(sprintf('p_%u',p), i, 'ineq.q.r',stages(i).dims.q);
-                    standardParamValues.(sprintf('p_%u',p)) = stages(i).ineq.q.r(stages(i).dims.q);
-                    stages(i).ineq.q.r(stages(i).dims.q) = 0;
-                    
-                    forcesParamMap.(sprintf('p_%u',p)) = zeros(4,0);
-                    for j=relevantParams
-                        forcesParamMap.(sprintf('p_%u',p))(:,end+1) = [1;...
-                                                                       qcqpParams.r(j).factor;...
-                                                                       yalmipParamMap(:,qcqpParams.r(j).maps2origparam)];
-                    end
-                    p = p + 1;
+                tic;
+                param = findRelevantQcqpParamsAndCreateForcesParameter( ...
+                    i,1,k,size(r),qcqpParams.r,qcqpParamIndices.r,'ineq.q.r',...
+                    1); % maps2mat argument --> don't set standard value
+                
+                % important: set maps2mat (not set in function) and set
+                % standard value
+                if ~isempty(param)
+                    params(p-1).maps2mat = stages(i).dims.q;
+                    standardParamValues.(param.name) = stages(i).ineq.q.r(end);
+                    stages(i).ineq.q.r(end) = 0;
                 end
+                createParamTime = createParamTime + toc;
             end
         end
     end
@@ -320,67 +302,96 @@ for i=1:G.n
     status = y2f_progressbar(status,i,G.n,barwidth);
 end
 
-    function createParameter(matrix, stage, relevantParams, matrixSize, row_idx, col_idx, name)
-    % Helper function to create FORCES parameters
-
-        params(p) = newParam(sprintf('p_%u',p), stage, name);
-        var = regexp(name,'[.]','split');  % split name
-        if length(var) == 2
-            standardParamValues.(sprintf('p_%u',p)) = stages(stage).(genvarname(var{1})).(genvarname(var{2}));
-            stages(stage).(genvarname(var{1})).(genvarname(var{2})) = [];
-        elseif length(var) == 3
-            standardParamValues.(sprintf('p_%u',p)) = stages(stage).(genvarname(var{1})).(genvarname(var{2})).(genvarname(var{3}));
-            stages(stage).(genvarname(var{1})).(genvarname(var{2})).(genvarname(var{3})) = [];
-        elseif length(var) == 4
-            standardParamValues.(sprintf('p_%u',p)) = stages(stage).(genvarname(var{4}));
-            stages(stage).(genvarname(var{1})).(genvarname(var{2})).(genvarname(var{3})).(genvarname(var{4})) = [];
+    function result = computeLinearIndices(matrixSize, row_idx, col_idx)
+    % Helper function that returns array of indices for all elements in the
+    % specified rows and columns 
+    
+        if ~isempty(row_idx) && ~isempty(col_idx)
+        m = length(row_idx);
+        n = length(col_idx);
+        cols = repmat(col_idx,m,1);
+        result = sub2ind(matrixSize, repmat(row_idx,1,n), cols(:)');
+        
         else
-            error('This case exists?');
+            result = zeros(0,1);
         end
-
-        forcesParamMap.(sprintf('p_%u',p)) = zeros(4,0);
-        paramSize = size(standardParamValues.(sprintf('p_%u',p)));
-        for j=relevantParams
-            for col=1:length(col_idx)
-                for row=1:length(row_idx)
-                    value_idx = find(sub2ind(matrixSize,row_idx(row),col_idx(col)) == ...
-                            qcqpParams.(matrix)(j).maps2index);
-                    if length(value_idx) == 1
-                        forcesParamMap.(sprintf('p_%u',p))(:,end+1) = [sub2ind(paramSize,row,col);...
-                                                                       qcqpParams.(matrix)(j).factor;...
-                                                                       yalmipParamMap(:,qcqpParams.(matrix)(j).maps2origparam)];
-                    elseif length(value_idx) > 1
-                        error('Mistake in the new stages formulation')
-                    end
-                end
-            end
-        end
-        p = p + 1;
     end
 
-    function createDiagonalCostParameter(stage, relevantParams, element_idx)
-    % Helper function to create a FORCES parameters for a diagonal cost
-        params(p) = newParam(sprintf('p_%u',p), stage, 'cost.H', 'diag');
-        standardParamValues.(sprintf('p_%u',p)) = stages(stage).cost.H(logical(eye(length(element_idx)))); % only use diagonal
-        stages(stage).cost.H = [];
-
-        forcesParamMap.(sprintf('p_%u',p)) = zeros(4,0);
-        paramSize = size(standardParamValues.(sprintf('p_%u',p)));
-        for j=relevantParams
-            for element=1:length(element_idx)
-                value_idx = find(sub2ind(size(H),element_idx(element),element_idx(element)) == ...
-                        qcqpParams.H(j).maps2index);
-                if length(value_idx) == 1
-                    forcesParamMap.(sprintf('p_%u',p))(:,end+1) = [element;...
-                                                                   qcqpParams.H(j).factor;...
-                                                                   yalmipParamMap(:,qcqpParams.H(j).maps2origparam)];
-                elseif length(value_idx) > 1
-                    error('Mistake in the new stages formulation')
+    function param = findRelevantQcqpParamsAndCreateForcesParameter( stage, row_idx, col_idx, fullMatrixSize, qcqpParams, qcqpParamIndices, param_name, maps2mat)
+    % Helper function to create FORCES parameters if necessary
+    
+        param = [];
+    
+        % Find relevant QCQP parameters (=> check indices in big matrix)
+        element_idx = computeLinearIndices(fullMatrixSize, row_idx, col_idx);
+        [relevant_params,param_local_idx] = ismember(qcqpParamIndices, element_idx); % find positions of parameters
+        % relevant_params(j) is 1 iff QCQP param at index j is needed
+        % param_local_idx(j) contains the (local) index of the element
+        % influenced by this parameter
+        
+        % special case: maps2mat was set (we're dealing with Q or l)
+        if nargin >= 8
+            % filter params that do not affect this "mat"
+            not_affected_params = [qcqpParams.maps2mat] ~= maps2mat;
+            relevant_params(not_affected_params) = 0;
+            param_local_idx(not_affected_params) = 0;
+        end
+        
+        if any(relevant_params) % We have QCQP params --> create a FORCES param            
+            % Create FORCES param with standard value
+            param_id = sprintf('p_%u',p);
+            params(p) = newParam(param_id, stage, param_name);
+            if nargin <= 7 % no maps2mat (we can't set standardParamValues for that case)
+                var = regexp(param_name,'[.]','split');  % split name
+                if length(var) == 2
+                    standardParamValues.(param_id) = stages(stage).(genvarname(var{1})).(genvarname(var{2}));
+                    stages(stage).(genvarname(var{1})).(genvarname(var{2})) = [];
+                elseif length(var) == 3
+                    standardParamValues.(param_id) = stages(stage).(genvarname(var{1})).(genvarname(var{2})).(genvarname(var{3}));
+                    stages(stage).(genvarname(var{1})).(genvarname(var{2})).(genvarname(var{3})) = [];
+                else
+                    error('This case exists?');
                 end
             end
+            
+            % Make param map (additive parts of parameter, see help of
+            % generateStagesFromGraph)
+            forcesParamMap.(param_id) = zeros(4,0);
+            for j=find(relevant_params)
+                forcesParamMap.(param_id)(:,end+1) = [param_local_idx(j);...
+                                                      qcqpParams(j).factor;...
+                                                      yalmipParamMap(:,qcqpParams(j).maps2origparam)];
+            end
+            
+            param = params(p);
+            p = p+1;
         end
-        p = p + 1;
+    
     end
+
+%     function createDiagonalCostParameter(stage, relevantParams, element_idx)
+%     % Helper function to create a FORCES parameters for a diagonal cost
+%         params(p) = newParam(sprintf('p_%u',p), stage, 'cost.H', 'diag');
+%         standardParamValues.(sprintf('p_%u',p)) = stages(stage).cost.H(logical(eye(length(element_idx)))); % only use diagonal
+%         stages(stage).cost.H = [];
+% 
+%         forcesParamMap.(sprintf('p_%u',p)) = zeros(4,0);
+%         paramSize = size(standardParamValues.(sprintf('p_%u',p)));
+%         for j=relevantParams
+%             for element=1:length(element_idx)
+%                 value_idx = find(sub2ind(size(H),element_idx(element),element_idx(element)) == ...
+%                         qcqpParams.H(j).maps2index);
+%                 if length(value_idx) == 1
+%                     forcesParamMap.(sprintf('p_%u',p))(:,end+1) = [element;...
+%                                                                    qcqpParams.H(j).factor;...
+%                                                                    yalmipParamMap(:,qcqpParams.H(j).maps2origparam)];
+%                 elseif length(value_idx) > 1
+%                     error('Mistake in the new stages formulation')
+%                 end
+%             end
+%         end
+%         p = p + 1;
+%     end
             
 fprintf('\nTime spent in createParameter: %5.1f seconds\n', createParamTime);
 
