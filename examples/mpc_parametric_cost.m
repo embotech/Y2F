@@ -76,16 +76,19 @@ end
 %% Create controller object (generates code)
 % for a complete list of codeoptions, see 
 % https://www.embotech.com/FORCES-Pro/User-Manual/Low-level-Interface/Solver-Options
-codeoptions = getOptions('FORCESsolver'); % give solver a name
-parameters = { X(:,1), Q, R, P };
+codeoptions = getOptions('simpleMPC_solver'); % give solver a name
+parameters     = { X(:,1),   Q,   R,   P  };
+parameterNames = { 'xinit', 'Q', 'R', 'P' };
+outputs     =      U(:,1)   ;
+outputNames = {'controlInput'};
 
 if( strcmpi(modus,'yalmip') )
     % standard yalmip optimizer
-    controller = optimizer(const, cost, sdpsettings('solver','quadprog'), parameters, {U(:,1)});
+    controller = optimizer(const, cost, sdpsettings('solver','quadprog'), parameters, outputs);
     goodexitflag = 0; % indicates success of solve
 else
     % y2f interface
-    controller = optimizerFORCES(const, cost, codeoptions, parameters, U(:,1));
+    controller = optimizerFORCES(const, cost, codeoptions, parameters, outputs, parameterNames, outputNames);
     goodexitflag = 1; % indicates success of solve
 end
 

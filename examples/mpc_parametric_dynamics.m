@@ -76,9 +76,10 @@ end
 %% Create controller object (generates code)
 % for a complete list of codeoptions, see 
 % https://www.embotech.com/FORCES-Pro/User-Manual/Low-level-Interface/Solver-Options
-codeoptions = getOptions('FORCESsolver'); % give solver a name
+codeoptions = getOptions('parametricDynamics_solver'); % give solver a name
 parameters = { x0, A, B };
-controller = optimizerFORCES(const, cost, codeoptions, parameters, U(:,1));
+parameterNames = { 'xinit', 'Amatrix', 'Bmatrix' };
+controller = optimizerFORCES(const, cost, codeoptions, parameters, U(:,1), parameterNames, {'u0'} );
 
 
 %% Simulate

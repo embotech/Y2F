@@ -41,6 +41,7 @@ clear; clc;
 % system matrices
 A = [1.1 1; 0 1];
 B = [1; 0.5];
+w = 1E-2;
 [nx,nu] = size(B);
 
 % horizon
@@ -87,11 +88,13 @@ end
 
 
 %% Create controller object (generates code)
-codeoptions = getOptions('FORCESsolver');
+codeoptions = getOptions('parametricInequalities_solver');
 
 parameters = { X(:,1), r1, r2 };
+parameterNames = { 'xinit', sprintf('cos(k*%4.2f)',w), sprintf('sin(k*%4.2f)',w) };
 outputs = U(:,1);
-controller = optimizerFORCES(const, cost, codeoptions, parameters, outputs);
+outputNames = {'u0'};
+controller = optimizerFORCES(const, cost, codeoptions, parameters, outputs, parameterNames, outputNames);
 
 
 %% Simulate
@@ -100,7 +103,7 @@ kmax = 30;
 X = zeros(nx,kmax+1); X(:,1) = x1;
 U = zeros(nu,kmax);
 problem.z1 = zeros(2*nx,1);
-w = 1E-2;
+
 for k = 1:kmax
     
     % Evaluate controller function for parameters
