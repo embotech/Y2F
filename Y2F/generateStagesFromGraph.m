@@ -56,7 +56,9 @@ for i=1:numel(qcqpParams.l)
 end
 
 % Go through all stages (and create them)
-status = y2f_progressbar([],0,G.n,30);
+barwidth = 30;
+%status = y2f_progressbar([],0,G.n,barwidth);
+status = [];
 createParamTime = 0;
 for i=1:G.n
     idx = G.vertices{i}; % sorting just to make sure code below works
@@ -184,7 +186,7 @@ for i=1:G.n
         if ~isempty(relevantParams)
             tic;
             createParameter('bineq', i, relevantParams, size(bineq), ineq_idx, 1, 'ineq.p.b');
-            toc;
+            createParamTime = createParamTime + toc;
         end
     end
     
@@ -310,7 +312,7 @@ for i=1:G.n
     
     last_idx = idx;
     
-    status = y2f_progressbar(status,i,G.n,30);
+    status = y2f_progressbar(status,i,G.n,barwidth);
 end
 
     function createParameter(matrix, stage, relevantParams, matrixSize, row_idx, col_idx, name)

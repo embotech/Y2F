@@ -89,12 +89,12 @@ elseif isa(solverOutputs,'sdpvar')
         parameterNames = {name};
     else
         parameterNames = {};
-        warning('Y2F:noParameterNames',['No parameter names specified for solver. We recommend adding names for better code documentation.' ...
+        warning('Y2F:noParameterNames',['No parameter names specified for solver. We recommend adding names for better code documentation. ' ...
         'For more info type ''help optimizerFORCES''.']);
     end
 else
     parameterNames = {};
-    warning('Y2F:noParameterNames',['No parameter names specified for solver. We recommend adding names for better code documentation.' ...
+    warning('Y2F:noParameterNames',['No parameter names specified for solver. We recommend adding names for better code documentation. ' ...
         'For more info type ''help optimizerFORCES''.']);
 end
 
@@ -114,12 +114,12 @@ elseif isa(solverOutputs,'sdpvar')
         outputNames = {name};
     else
         outputNames = {};
-        warning('Y2F:noOutputNames',['No output names specified for solver. We recommend adding names for better code documentation.' ...
+        warning('Y2F:noOutputNames',['No output names specified for solver. We recommend adding names for better code documentation. ' ...
         'For more info type ''help optimizerFORCES''.']);
     end
 else
     outputNames = {};
-    warning('Y2F:noOutputNames',['No output names specified for solver. We recommend adding names for better code documentation.' ...
+    warning('Y2F:noOutputNames',['No output names specified for solver. We recommend adding names for better code documentation. ' ...
         'For more info type ''help optimizerFORCES''.']);
 end
 
