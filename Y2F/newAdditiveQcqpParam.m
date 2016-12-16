@@ -9,6 +9,11 @@ function param = newAdditiveQcqpParam( maps2index, maps2origparam, maps2mat, fac
 %                           multiplied before it is added
 %     param.maps2mat        index of QCQP matrix (only relevant for quad.
 %                           constraints) 
+%
+% This file is part of the y2f project: http://github.com/embotech/y2f, 
+% a project maintained by embotech under the MIT open-source license.
+%
+% (c) Gian Ulli and embotech GmbH, Zurich, Switzerland, 2013-2016.
 
 param.maps2index = maps2index;
 

@@ -7,6 +7,10 @@ function [vertexIdx,localIdx,componentIdx] = findVariableIndex( components, vari
 %   components  cell array of connected graphs
 %   variable    variable number
 %   
+% This file is part of the y2f project: http://github.com/embotech/y2f, 
+% a project maintained by embotech under the MIT open-source license.
+%
+% (c) Gian Ulli and embotech GmbH, Zurich, Switzerland, 2013-2016.
 
 if ~iscell(components)
     components = {components};

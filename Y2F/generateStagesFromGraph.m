@@ -18,6 +18,11 @@ function [stages, params, standardParamValues, forcesParamMap] = generateStagesF
 %           .(param_name)(2,.):   factor by which value gets multiplied
 %           .(param_name)(3,.):   matrix that contains value
 %           .(param_name)(4,.):   points to element inside value matrix
+%
+% This file is part of the y2f project: http://github.com/embotech/y2f, 
+% a project maintained by embotech under the MIT open-source license.
+%
+% (c) Gian Ulli and embotech GmbH, Zurich, Switzerland, 2013-2016.
 
 if ~checkIfGraphIsPathGraph(G)
     error('Path is not a path graph. Other structures are not supported.')

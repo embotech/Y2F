@@ -4,18 +4,28 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
 %   solver = OPTIMIZERFORCES(constraint,objective,codeoptions,parameters,solverOutputs)
 %   generates a solver using FORCES Pro that solves the specified problem
 %   for given parameter values and returns the value of the specified
-%   outputs.
+%   outputs. The solver can be called  by indexing the returned OPTIMIZERFORCES
+%   object (using curly braces) with the parameter values. This API is
+%   compatible with the YALMIP function OPTIMIZER. To obtain more
+%   information on the solver, you can type 'help <solvername>' after the code
+%   has been generated, where <solvername> is the name you give to the solver
+%   via codeoptions.name.
 %
-%   The solver can be called  by indexing the returned OPTIMIZERFORCES
-%   object (using curly braces) with the parameter values.
+%
+%   solver = OPTIMIZERFORCES(constraint,objective,codeoptions,parameters,solverOutputs,parameterNames,outputNames)
+%   same as above, but the generated code and all its associated help
+%   files, the Simulink block etc. will carry the names provided in the
+%   last two arguments for parameters and outputs, respectively. It is
+%   strongly recommended to provide these names.
+%
 %
 %   Example usage:
 %
 %       sdpvar x y p
 %       options = getOptions('solver_name')
-%     	solver = optimizerFORCES([x + y == p], x^2+y^2, options, p, {x,y})
+%     	solver = optimizerFORCES([x + y == p], x^2+y^2, options, p, {x,y}, {'p'}, {'x_optimal','y_optimal'})
 %       solution = solver{5} % solve problem for p = 5
-%       
+%
 %
 %   Inputs:
 %       constraint:     constraints in YALMIP format, see e.g. OPTIMIZER
@@ -42,6 +52,18 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
 %                           solver = optimizerFORCES(...);
 %                           x = solver{paramValues};
 %       success:        1 if solver generation was successful, 0 otherwise
+%
+%
+%   Getting details on solver:
+%
+%       help solver_name % get more details on the generated solver
+%
+% See also SDPVAR OPTIMIZER
+%
+% This file is part of the y2f project: http://github.com/embotech/y2f, 
+% a project maintained by embotech under the MIT open-source license.
+%
+% (c) Gian Ulli and embotech GmbH, Zurich, Switzerland, 2013-2016.
 
 disp('YALMIP-to-FORCES code generator')
 disp('-------------------------------')

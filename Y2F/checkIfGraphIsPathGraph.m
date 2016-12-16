@@ -2,6 +2,11 @@ function result = checkIfGraphIsPathGraph( G )
 %CHECKGRAPHISPATHGRAPH Checks if a graph is a path graph
 %   result = 1 if given graph is a path graph, 0 otherwise
 %   G has the format described in EMPTYGRAPH
+%
+% This file is part of the y2f project: http://github.com/embotech/y2f, 
+% a project maintained by embotech under the MIT open-source license.
+%
+% (c) Gian Ulli and embotech GmbH, Zurich, Switzerland, 2013-2016.
 
 result = 0;
 

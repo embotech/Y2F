@@ -19,9 +19,14 @@
 % Note: due to 1-based indexing in Matlab, we use 1...N+1 instead of 0...N
 %       as indices for state and input trajectory
 %
-% (c) embotech GmbH, Zurich, Switzerland, 2013-2016.
+% This file is part of the y2f project: http://github.com/embotech/y2f, 
+% a project maintained by embotech under the MIT open-source license.
+%
+% (c) Gian Ulli and embotech GmbH, Zurich, Switzerland, 2013-2016.
 
 clear; clc;
+
+modus = 'y2f'; % 'yalmip' or 'y2f'
 
 %% MPC problem data
 
@@ -73,7 +78,16 @@ end
 % https://www.embotech.com/FORCES-Pro/User-Manual/Low-level-Interface/Solver-Options
 codeoptions = getOptions('FORCESsolver'); % give solver a name
 parameters = { X(:,1), Q, R, P };
-controller = optimizerFORCES(const, cost, codeoptions, parameters, U(:,1));
+
+if( strcmpi(modus,'yalmip') )
+    % standard yalmip optimizer
+    controller = optimizer(const, cost, sdpsettings('solver','quadprog'), parameters, {U(:,1)});
+    goodexitflag = 0; % indicates success of solve
+else
+    % y2f interface
+    controller = optimizerFORCES(const, cost, codeoptions, parameters, U(:,1));
+    goodexitflag = 1; % indicates success of solve
+end
 
 
 %% Simulate
@@ -92,12 +106,14 @@ R = eye(1);
 for k = 1:kmax
     
     % Evaluate controller function for parameters
-    [U(:,k),exitflag,info] = controller{ X(:,k), Q,R,P };
+    [U(:,k),exitflag,info] = controller{ {X(:,k), Q,R,P} };
     
     % Always check the exitflag in case something went wrong in the solver
-    if( exitflag == 1 )
-        fprintf('Time step %2d: FORCES took %2d iterations and %5.3f ', k,  info.it, info.solvetime*1000);
-        fprintf('milliseconds to solve the problem.\n');
+    if( exitflag == goodexitflag )
+        if( strcmpi(modus,'y2f') )
+            fprintf('Time step %2d: FORCES took %2d iterations and %5.3f ', k,  info.it, info.solvetime*1000);
+            fprintf('milliseconds to solve the problem.\n');
+        end
     else
         info
         error('Some problem in solver');

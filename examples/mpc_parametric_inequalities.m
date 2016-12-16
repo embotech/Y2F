@@ -29,7 +29,10 @@
 % Note: due to 1-based indexing in Matlab, we use 1...N+1 instead of 0...N
 %       as indices for state and input trajectory
 %
-% (c) embotech GmbH, Zurich, Switzerland, 2013-2016.
+% This file is part of the y2f project: http://github.com/embotech/y2f, 
+% a project maintained by embotech under the MIT open-source license.
+%
+% (c) Gian Ulli and embotech GmbH, Zurich, Switzerland, 2013-2016.
 
 clear; clc;
 

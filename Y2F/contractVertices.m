@@ -3,6 +3,11 @@ function G = contractVertices( G, vertex1, vertex2 )
 %   graph = graph data structure (see EMPTYGRAPH for more information)
 %   vertex1 = index of first vertex
 %   vertex2 = index of second vertex
+%
+% This file is part of the y2f project: http://github.com/embotech/y2f, 
+% a project maintained by embotech under the MIT open-source license.
+%
+% (c) Gian Ulli and embotech GmbH, Zurich, Switzerland, 2013-2016.
 
 if vertex1 == vertex2 
     return % nothing to do

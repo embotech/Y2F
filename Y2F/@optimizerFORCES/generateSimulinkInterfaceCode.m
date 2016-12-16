@@ -1,6 +1,11 @@
 function success = generateSimulinkInterfaceCode( self )
 %GENERATESIMULINKINTERFACECODE generates a C file with an S-function for
 %use in a Simulink model.
+%
+% This file is part of the y2f project: http://github.com/embotech/y2f, 
+% a project maintained by embotech under the MIT open-source license.
+%
+% (c) Gian Ulli and embotech GmbH, Zurich, Switzerland, 2013-2016.
 
 success = 0;
 
