@@ -178,6 +178,56 @@ tic;
 yalmiptime=toc;
 fprintf('   [OK, %5.1f sec]\n', yalmiptime);
 
+% Check if matrices are numeric
+if ~isnumeric(H) || ~isnumeric(f)
+    error('Y2F can only handle numeric inputs. There are non-numeric terms in the cost.')
+end
+if ~isnumeric(Aineq) || ~isnumeric(bineq)
+    error('Y2F can only handle numeric inputs. There are non-numeric terms in the inequality contraints.')
+end
+if ~isnumeric(Aeq) || ~isnumeric(beq)
+    error('Y2F can only handle numeric inputs. There are non-numeric terms in the equality contraints.')
+end
+if ~isnumeric(lb) || ~isnumeric(ub)
+    error('Y2F can only handle numeric inputs. There are non-numeric terms in the bounds.')
+end
+
+% Check if matrices are real
+if ~isreal(H) || ~isreal(f)
+    error('Y2F can only handle real inputs. There are complex terms in the cost.')
+end
+if ~isreal(Aineq) || ~isreal(bineq)
+    error('Y2F can only handle real inputs. There are complex terms in the inequality contraints.')
+end
+if ~isreal(Aeq) || ~isreal(beq)
+    error('Y2F can only handle real inputs. There are complex terms in the equality contraints.')
+end
+if ~isreal(lb) || ~isreal(ub)
+    error('Y2F can only handle real inputs. There are complex terms in the bounds.')
+end
+
+% Check if matrices are doubles
+if ~isa(H,'double') || ~isa(f,'double')
+    warning('Y2F:nonDoubleCost', 'Y2F can only handle inputs of type ''double''. The cost will be cast to ''double''.')
+    H = double(H);
+    f = double(f);
+end
+if ~isa(Aineq,'double') || ~isa(bineq,'double')
+    warning('Y2F:nonDoubleInequality', 'Y2F can only handle inputs of type ''double''. The inequality constraints will be cast to ''double''.')
+    Aineq = double(Aineq);
+    bineq = double(bineq);
+end
+if ~isa(Aeq,'double') || ~~isa(beq,'double')
+    warning('Y2F:nonDoubleEquality', 'Y2F can only handle inputs of type ''double''. The equality constraints will be cast to ''double''.')
+    Aeq = double(Aeq);
+    beq = double(beq);
+end
+if ~isa(lb,'double') || ~isa(ub,'double')
+    warning('Y2F:nonDoubleBounds', 'Y2F can only handle inputs of type ''double''. The bounds will be cast to ''double''.')
+    lb = double(lb);
+    ub = double(ub);
+end
+
 %% Assemble parameters & convert quadratic variables
 % Quadratic inequalities are not recognized by YALMIP
 % Information is stored in internalmodel
