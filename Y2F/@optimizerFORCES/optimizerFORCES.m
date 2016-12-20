@@ -320,6 +320,9 @@ fprintf('   [OK, %5.1f sec]\n', assembleStagesTime);
 %% Generate solver using FORCES
 disp('Generating solver using FORCES...')
 
+% set flag to let FORCES know that request came from Y2F
+codeoptions.interface = 'y2f';
+
 success = 1;
 default_codeoptions = codeoptions;
 codeoptions = cell(1,numel(stages));
