@@ -25,11 +25,6 @@ for i=1:self.numSolvers
     if( exist(dir2move,'dir') )
         copyfile(dir2move, sprintf('%s/lib',solverName), 'f');
     end
-    % lib_target
-    dir2move = sprintf('%s/lib_target',self.codeoptions{i}.name);
-    if( exist(dir2move,'dir') )
-        copyfile(dir2move, sprintf('%s/lib_target',solverName), 'f');
-    end
     % obj
     dir2move = sprintf('%s/obj',self.codeoptions{i}.name);
     if( exist(dir2move,'dir') )
