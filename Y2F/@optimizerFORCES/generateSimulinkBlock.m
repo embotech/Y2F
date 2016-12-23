@@ -85,7 +85,11 @@ help = sprintf('%s\nFor more information, see https://www.embotech.com/FORCES-Pr
 set_param([model '/' block], 'MaskHelp', help);
 
 % Save system
-save_system(model);
+filename = save_system(model);
+close_system(model, 0);
+
+% Move library to interface folder
+movefile(filename, [solverName '/interface'])
 
 end
 
