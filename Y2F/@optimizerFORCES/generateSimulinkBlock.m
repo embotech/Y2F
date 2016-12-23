@@ -37,7 +37,7 @@ iconDrawingString = 'image(''forcesprologo.jpg'', ''center'', ''on'')';
 for i=1:self.numParams
     iconDrawingString = sprintf('%s;port_label(''input'', %u, ''%s'')', iconDrawingString, i, self.paramNames{i});
 end
-for i=1:numel(self)
+for i=1:numel(self.outputSize)
     iconDrawingString = sprintf('%s;port_label(''output'', %u, ''%s'')', iconDrawingString, i, self.outputNames{i});
 end
 set_param([model '/' block], 'MaskDisplay', iconDrawingString)
