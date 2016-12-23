@@ -35,6 +35,16 @@ for i=1:self.numSolvers
     if exist(dir2move,'dir')
         copyfile(dir2move, sprintf('%s/src',solverName), 'f');
     end
+    % obj_target
+    dir2move = sprintf('%s/obj_target',self.codeoptions{i}.name);
+    if exist(dir2move,'dir')
+        copyfile(dir2move, sprintf('%s/obj_target',solverName), 'f');
+    end
+    % lib_target
+    dir2move = sprintf('%s/lib_target',self.codeoptions{i}.name);
+    if exist(dir2move,'dir')
+        copyfile(dir2move, sprintf('%s/lib_target',solverName), 'f');
+    end
     
     % Delete files
     rmdir(self.codeoptions{i}.name, 's');
