@@ -5,8 +5,14 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
 %   generates a solver using FORCES Pro that solves the specified problem
 %   for given parameter values and returns the value of the specified
 %   outputs. The solver can be called  by indexing the returned OPTIMIZERFORCES
-%   object (using curly braces) with the parameter values. This API is
-%   compatible with the YALMIP function OPTIMIZER. To obtain more
+%   object with the parameter values. The parameter values can be passed in
+%   a number of different ways:
+%   
+%       output = solver{param1, param2, ...} OR
+%       output = solver{ {param1, param2, ...} } OR
+%       output = solver(param1, param2, ...)
+%   
+%   This API is compatible with the YALMIP function OPTIMIZER. To obtain more
 %   information on the solver, you can type 'help <solvername>' after the code
 %   has been generated, where <solvername> is the name you give to the solver
 %   via codeoptions.name.
@@ -56,7 +62,7 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
 %
 %   Getting details on solver:
 %
-%       help solver_name % get more details on the generated solver
+%       help <solvername> % get more details on the generated solver
 %
 % See also SDPVAR OPTIMIZER
 %
