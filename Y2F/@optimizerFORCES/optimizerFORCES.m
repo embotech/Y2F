@@ -217,7 +217,7 @@ if ~isa(Aineq,'double') || ~isa(bineq,'double')
     Aineq = double(Aineq);
     bineq = double(bineq);
 end
-if ~isa(Aeq,'double') || ~~isa(beq,'double')
+if ~isa(Aeq,'double') || ~isa(beq,'double')
     warning('Y2F:nonDoubleEquality', 'Y2F can only handle inputs of type ''double''. The equality constraints will be cast to ''double''.')
     Aeq = double(Aeq);
     beq = double(beq);
