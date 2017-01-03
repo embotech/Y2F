@@ -1068,10 +1068,7 @@ generateSimulinkBlock(sys);
                 if strcmpi(in,'y')
                     break
                 elseif strcmpi(in,'n')
-                    disp('Please reformulate your problem or contact support at support@embotech.com.');
-                    success = 0;
-                    sys = [];
-                    return
+                    error('Please reformulate your problem or contact support at support@embotech.com.');
                 end
             end
         end
