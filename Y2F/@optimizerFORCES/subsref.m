@@ -9,10 +9,10 @@ function [output,exitflag,info] = subsref(self,subs)
 if isequal(subs.type,'.')
     error('No fields accessible in OPTIMIZERFORCES.');
 elseif isequal(subs.type,'{}') || isequal(subs.type,'()')  % --> call solver
-    if ~isa(subs.subs{1},'cell')
-        paramValues = subs.subs;
-    else
+    if numel(subs.subs) == 1 && isa(subs.subs{1},'cell')
         paramValues = subs.subs{1};
+    else
+        paramValues = subs.subs;
     end
     [output,exitflag,info] = self.interfaceFunction(paramValues);
 end
