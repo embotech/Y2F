@@ -103,7 +103,11 @@ problem.z1 = zeros(2*nx,1);
 % set cost matrices
 Q = eye(2);
 R = eye(1);
-[~,P] = dlqr(A,B,Q,R);
+if exist('dlqr', 'file')
+    [~,P] = dlqr(A,B,Q,R);
+else
+    P = 10*Q;
+end
 
 
 for k = 1:kmax

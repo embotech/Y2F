@@ -35,7 +35,11 @@ N = 10;
 % cost matrices
 Q = eye(2);
 R = eye(1);
-[~,P] = dlqr(A,B,Q,R);
+if exist('dlqr', 'file')
+    [~,P] = dlqr(A,B,Q,R);
+else
+    P = 10*Q;
+end
 
 % constraints
 umin = -0.5;     umax = 0.5;

@@ -13,7 +13,7 @@
 %            xmin <= xi <= xmax   for i = 1...N
 %            umin <= ui <= umax   for i = 0...N-1
 %
-% and P is solution of Ricatti eqn. from LQR problem, and A and B are
+% Q, R, and P are suitable cost matrices and A and B are
 % parameters to the problem.
 %
 % Note: due to 1-based indexing in Matlab, we use 1...N+1 instead of 0...N
