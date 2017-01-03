@@ -37,7 +37,7 @@ N = 10;
 % cost matrices
 Q = eye(2);
 R = eye(1);
-P = 10*Q; % we don't A and B yet, so we cannot compute the LQR cost and use this instead
+P = 10*Q; % we don't know A and B yet, so we cannot compute the LQR cost and use this instead
 
 % constraints
 umin = -0.5;     umax = 0.5;

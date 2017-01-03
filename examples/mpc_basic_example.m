@@ -38,6 +38,7 @@ R = eye(1);
 if exist('dlqr', 'file')
     [~,P] = dlqr(A,B,Q,R);
 else
+    fprintf('Did not find dlqr (part of the Control Systems Toolbox). Will use 10*Q for the terminal cost matrix.\n');
     P = 10*Q;
 end
 
