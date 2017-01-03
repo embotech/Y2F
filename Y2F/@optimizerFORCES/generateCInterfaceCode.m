@@ -61,6 +61,12 @@ fprintf(hFileID, 'typedef double %s_FLOAT;\n\n',solverName);
 
 %fprintf(hFileID, 'typedef double %sINTERFACE_FLOAT;\n\n',solverName);
 
+fprintf(hFileID, '/* SOLVER SETTINGS ------------------------------------------------------*/\n');
+fprintf(hFileID, '/* print level */\n');
+fprintf(hFileID, '#ifndef %s_SET_PRINTLEVEL\n', solverName);
+fprintf(hFileID, '#define %s_SET_PRINTLEVEL    (%u)\n', solverName, self.default_codeoptions.printlevel);
+fprintf(hFileID, '#endif\n\n');
+
 fprintf(hFileID, '/* PARAMETERS -----------------------------------------------------------*/\n');
 fprintf(hFileID, '/* fill this with data before calling the solver! */\n');
 fprintf(hFileID, 'typedef struct %s_params\n',solverName);
