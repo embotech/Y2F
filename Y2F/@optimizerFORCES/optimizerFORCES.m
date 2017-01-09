@@ -379,15 +379,17 @@ disp('Writing help file...');
 
 generateHelp(sys);
 
-% Compile Simulink code
-disp('Compiling Simulink code for solver interface...');
+if (~isfield(default_codeoptions,'BuildSimulinkBlock') || default_codeoptions.BuildSimulinkBlock ~= 0)
+    % Compile Simulink code (is optional)
+    disp('Compiling Simulink code for solver interface...');
 
-compileSimulinkInterfaceCode(sys);
+    compileSimulinkInterfaceCode(sys);
 
-% Compile Simulink code
-disp('Generating Simulink Block...');
+    % Compile Simulink code
+    disp('Generating Simulink Block...');
 
-generateSimulinkBlock(sys);
+    generateSimulinkBlock(sys);
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
