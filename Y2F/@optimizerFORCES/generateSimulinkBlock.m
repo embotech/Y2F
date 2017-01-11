@@ -40,6 +40,12 @@ end
 for i=1:numel(self.outputSize)
     iconDrawingString = sprintf('%s;port_label(''output'', %u, ''%s'')', iconDrawingString, i, self.outputNames{i});
 end
+if (isfield(self.default_codeoptions,'showinfo') && self.default_codeoptions.showinfo) % we have diagnostic fields
+    iconDrawingString = sprintf('%s;port_label(''output'', %u, ''exitflag'')',iconDrawingString,numel(self.outputSize)+1);
+    iconDrawingString = sprintf('%s;port_label(''output'', %u, ''iterations'')',iconDrawingString,numel(self.outputSize)+2);
+    iconDrawingString = sprintf('%s;port_label(''output'', %u, ''solve_time'')',iconDrawingString,numel(self.outputSize)+3);
+    iconDrawingString = sprintf('%s;port_label(''output'', %u, ''primal_obj'')',iconDrawingString,numel(self.outputSize)+4);
+end
 set_param([model '/' block], 'MaskDisplay', iconDrawingString)
 
 % Set position of block

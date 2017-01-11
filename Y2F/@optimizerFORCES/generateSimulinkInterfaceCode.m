@@ -81,15 +81,27 @@ fprintf(fileID, '\n');
 
 % Output ports
 fprintf(fileID, '	/* initialize output ports - there are %u in total */\n',numel(self.outputSize));
-fprintf(fileID, '    if (!ssSetNumOutputPorts(S, %u)) return;    \n',numel(self.outputSize));
+if (isfield(self.default_codeoptions,'showinfo') && self.default_codeoptions.showinfo) % Info fields (exitflag, iterations, solve time, pobj) are optional
+    fprintf(fileID, '    if (!ssSetNumOutputPorts(S, %u)) return;    \n',numel(self.outputSize) + 4);
+else % no info fields
+    fprintf(fileID, '    if (!ssSetNumOutputPorts(S, %u)) return;    \n',numel(self.outputSize));
+end
 fprintf(fileID, '		\n');
 
-for i=1:numel(self.outputSize)
+for i=1:numel(self.outputSize) % normal output ports
     fprintf(fileID, '	/* Output Port %u */\n',i-1);
     fprintf(fileID, '    ssSetOutputPortMatrixDimensions(S, %u, %u, %u);\n',i-1,self.outputSize{i}(1),self.outputSize{i}(2));
     fprintf(fileID, '    ssSetOutputPortDataType(S, %u, SS_DOUBLE);\n',i-1);
     fprintf(fileID, '    ssSetOutputPortComplexSignal(S, %u, COMPLEX_NO); /* no complex signals suppported */\n',i-1);
     fprintf(fileID, '\n');
+end
+
+% Diagnostic info ports
+if (isfield(self.default_codeoptions,'showinfo') && self.default_codeoptions.showinfo)
+    fprintf(fileID, '	/* Diagnostic Output Ports */\n');
+    fprintf(fileID, '    ssSetOutputPortMatrixDimensions(S, %u, 1, 1);\n',numel(self.outputSize)+(0:3));
+    fprintf(fileID, '    ssSetOutputPortDataType(S, %u, SS_DOUBLE);\n',numel(self.outputSize)+(0:3));
+    fprintf(fileID, '    ssSetOutputPortComplexSignal(S, %u, COMPLEX_NO);\n',numel(self.outputSize)+(0:3));
 end
 
 fprintf(fileID, '\n');
@@ -159,8 +171,15 @@ for i=1:self.numParams
     fprintf(fileID, '    ssSetInputPortDataType( S, %u, SS_DOUBLE);\n',i-1);
 end
 
-for i=1:numel(self.outputSize)
-    fprintf(fileID, '    ssSetOutputPortDataType(S, %u, SS_DOUBLE);\n',i-1);
+% Info fields are optional
+if (isfield(self.default_codeoptions,'showinfo') && self.default_codeoptions.showinfo)
+    for i=1:numel(self.outputSize)+4
+        fprintf(fileID, '    ssSetOutputPortDataType(S, %u, SS_DOUBLE);\n',i-1);
+    end
+else
+    for i=1:numel(self.outputSize)
+        fprintf(fileID, '    ssSetOutputPortDataType(S, %u, SS_DOUBLE);\n',i-1);
+    end
 end
 fprintf(fileID, '}\n');
 fprintf(fileID, '\n');
@@ -184,6 +203,18 @@ fprintf(fileID, '	\n');
 for i=1:numel(self.outputSize)
     fprintf(fileID, '    real_T *output_%s = (real_T*) ssGetOutputPortSignal(S,%u);\n',self.outputNames{i},i-1);
 end
+fprintf(fileID, '\n');
+
+% Info fields are optional
+if (isfield(self.default_codeoptions,'showinfo') && self.default_codeoptions.showinfo)
+    fprintf(fileID, '    /* Diagnostic output ports */\n');
+    fprintf(fileID, '    real_T *solver_exitflag = (real_T*) ssGetOutputPortSignal(S,%u);\n',numel(self.outputSize));
+    fprintf(fileID, '    real_T *iterations = (real_T*) ssGetOutputPortSignal(S,%u);\n',numel(self.outputSize)+1);
+    fprintf(fileID, '    real_T *solve_time = (real_T*) ssGetOutputPortSignal(S,%u);\n',numel(self.outputSize)+2);
+    fprintf(fileID, '    real_T *primal_obj = (real_T*) ssGetOutputPortSignal(S,%u);\n',numel(self.outputSize)+3);
+    fprintf(fileID, '\n');
+end
+    
 fprintf(fileID, '\n');
 fprintf(fileID, '   /* Solver data */\n');
 fprintf(fileID, '	%s_params params;\n',solverName);
@@ -233,6 +264,58 @@ fprintf(fileID, '	/* Copy outputs */\n');
 for i=1:numel(self.outputSize)
     fprintf(fileID, '	for( i=0; i<%u; i++){ output_%s[i] = (real_T) output.%s[i]; }\n',prod(self.outputSize{i}),self.outputNames{i},self.outputNames{i});
 end
+
+% Info fields are optional
+if (isfield(self.default_codeoptions,'showinfo') && self.default_codeoptions.showinfo)
+    fprintf(fileID, '\n/* Diagnostic info */\n');
+    if self.numSolvers == 1
+        fprintf(fileID, '    iterations[0] = info.it;\n');
+        fprintf(fileID, '    solve_time[0] = info.solvetime;\n');
+        fprintf(fileID, '    primal_obj[0] = info.pobj;\n');
+        fprintf(fileID, '    solver_exitflag[0] = exitflag;\n');
+    else % multiple solvers
+        % sum iterations
+        fprintf(fileID, '    iterations[0] = info.it[0]');
+        for i=2:self.numSolvers
+            fprintf(fileID, ' + info.it[%u]', i-1);
+        end
+        fprintf(fileID, ';\n');
+        
+        % sum solve times
+        fprintf(fileID, '    solve_time[0] = info.solvetime[0]');
+        for i=2:self.numSolvers
+            fprintf(fileID, ' + info.solvetime[%u]', i-1);
+        end
+        fprintf(fileID, ';\n');
+        
+        % sum objective values
+        fprintf(fileID, '    primal_obj[0] = info.pobj[0]');
+        for i=2:self.numSolvers
+            fprintf(fileID, ' + info.pobj[%u]', i-1);
+        end
+        fprintf(fileID, ';\n');
+        
+        % Find worst exitflag (worst-to-best: -100,-10,-2,-1,0,2,1)
+        if isempty(self.qcqpParams.bidx) % not branch-and-bound
+            fprintf(fileID, '    solver_exitflag[0] = exitflag[0];\n');
+            fprintf(fileID, '    for ( i=1; i<%u; i++) {\n', self.numSolvers);
+            fprintf(fileID, '        if (exitflag[i] < solver_exitflag[0])\n');
+            fprintf(fileID, '             solver_exitflag[0] = exitflag[i];\n');
+            fprintf(fileID, '    };\n');
+        else
+            fprintf(fileID, '    solver_exitflag[0] = exitflag[0];\n');
+            fprintf(fileID, '    int i = 0;\n');
+            fprintf(fileID, '    for ( i=1; i<%u; i++) {\n', self.numSolvers);
+            fprintf(fileID, '        if (exitflag[i] == 2 && solver_exitflag[0] == 1) {\n');
+            fprintf(fileID, '             solver_exitflag[0] = 2;\n');
+            fprintf(fileID, '        } else if (exitflag[i] != 2 && exitflag[i] < solver_exitflag[0]) {\n');
+            fprintf(fileID, '             solver_exitflag[0] = exitflag[i];\n');
+            fprintf(fileID, '        };\n');
+            fprintf(fileID, '    };\n');
+        end
+    end
+end
+
 fprintf(fileID, '}\n');
 
 fprintf(fileID, '\n');
