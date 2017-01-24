@@ -7,7 +7,7 @@ with [FORCES Pro](https://www.embotech.com/FORCES-Pro). It combines YALMIP's int
 
 Simply download the code to the desired location and add the `Y2F` folder to your [MATLAB search path](http://ch.mathworks.com/help/matlab/ref/addpath.html). 
 
-The Y2F interface requires a working YALMIP installation. See [http://users.isy.liu.se/johanl/yalmip/pmwiki.php?n=Tutorials.Installation](http://users.isy.liu.se/johanl/yalmip/pmwiki.php?n=Tutorials.Installation) for instructions on how to install YALMIP.
+The Y2F interface requires a working YALMIP installation. See [https://yalmip.github.io/tutorial/installation/](https://yalmip.github.io/tutorial/installation/) for instructions on how to install YALMIP.
 
 The code has been tested with YALMIP release 20150919. Older versions might work but have not been tested.
 
