@@ -178,7 +178,9 @@ end
 
 
 %% Call YALMIP and convert QP into FORCES format
-fprintf('Using YALMIP to convert problem into QP...')
+disp('This is Y2F (v0.1.1), the YALMIP interface of FORCES Pro.');
+disp('For more information visit https://github.com/embotech/y2f');
+fprintf('\nUsing YALMIP to convert problem into QP...')
 tic;
 [internalmodel,H,f,Aineq,bineq,Aeq,beq,lb,ub] = getQpAndModelFromYALMIP();
 yalmiptime=toc;
