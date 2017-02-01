@@ -67,13 +67,21 @@ if (ispc)
     end
 end
 
+% final MEX build
 if exist( [cName '.c'], 'file' ) && exist( [mexName '.c'], 'file' )
     mex('-c','-g','-outdir',[solverName '/interface'],[cName '.c'])
     mex('-c','-g','-outdir',[solverName '/interface'],[mexName '.c'])
     if( ispc ) % PC - we need additional libraries
-        mex([solverName '/interface/*.obj'], '-output', outputName, ...
-            ['-L' solverName '/lib'], libs{:}, '-llibdecimal', ...
-            '-llibirc', '-llibmmt', '-lsvml_dispmt', '-lIPHLPAPI.lib');
+        % figure our whether we need additional libraries indeed (Intel)
+        if( exist([solverName,filesep,'lib'],'dir') )
+            mex([solverName '/interface/*.obj'], '-output', outputName, ...
+                ['-L' solverName '/lib'], libs{:}, '-llibdecimal', ...
+                '-llibirc', '-llibmmt', '-lsvml_dispmt', '-lIPHLPAPI.lib');
+        else
+            % it seems that we have been compiling with VS only,
+            % so we do not add the Intel libs and use only object files
+            mex([solverName, '/interface/*.obj'], [solverName '/obj/*.obj'], '-lIPHLPAPI.lib', '-output', [outputName(2:end-1),'.',mexext]);
+        end
         delete([solverName '/interface/*.obj']);
     elseif( ismac )
         mex([solverName '/interface/*.o'], '-output', outputName) 
