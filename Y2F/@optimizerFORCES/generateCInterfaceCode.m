@@ -124,8 +124,13 @@ if self.numSolvers == 1
     fprintf(hFileID, '\t/* inf-norm of equality constraint residuals */\n');
     fprintf(hFileID, '\t%s_FLOAT res_eq;\n\n',solverName);
 	
-    fprintf(hFileID, '\t/* inf-norm of inequality constraint residuals */\n');
-    fprintf(hFileID, '\t%s_FLOAT res_ineq;\n\n',solverName);
+    if strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % extra field for ADMM
+        fprintf(hFileID, '\t/* inf-norm of dual residual */\n');
+        fprintf(hFileID, '\t%s_FLOAT res_dual;\n\n',solverName);
+    else % not for ADMM
+        fprintf(hFileID, '\t/* inf-norm of inequality constraint residuals */\n');
+        fprintf(hFileID, '\t%s_FLOAT res_ineq;\n\n',solverName);
+    end
 
     fprintf(hFileID, '\t/* primal objective */\n');
     fprintf(hFileID, '\t%s_FLOAT pobj;\n\n',solverName);
@@ -139,26 +144,28 @@ if self.numSolvers == 1
     fprintf(hFileID, '\t/* relative duality gap := |dgap / pobj | */\n');
     fprintf(hFileID, '\t%s_FLOAT rdgap;\n\n',solverName);
 
-    fprintf(hFileID, '\t/* duality measure */\n');
-    fprintf(hFileID, '\t%s_FLOAT mu;\n\n',solverName);
-
-	fprintf(hFileID, '\t/* duality measure (after affine step) */\n');
-    fprintf(hFileID, '\t%s_FLOAT mu_aff;\n\n',solverName);
-	
-    fprintf(hFileID, '\t/* centering parameter */\n');
-    fprintf(hFileID, '\t%s_FLOAT sigma;\n\n',solverName);
-	
-    fprintf(hFileID, '\t/* number of backtracking line search steps (affine direction) */\n');
-    fprintf(hFileID, '\tint lsit_aff;\n\n');
-    
-    fprintf(hFileID, '\t/* number of backtracking line search steps (combined direction) */\n');
-    fprintf(hFileID, '\tint lsit_cc;\n\n');
-    
-    fprintf(hFileID, '\t/* step size (affine direction) */\n');
-    fprintf(hFileID, '\t%s_FLOAT step_aff;\n\n',solverName);
-    
-    fprintf(hFileID, '\t/* step size (combined direction) */\n');
-    fprintf(hFileID, '\t%s_FLOAT step_cc;\n\n',solverName);
+    if ~strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % not for ADMM
+        fprintf(hFileID, '\t/* duality measure */\n');
+        fprintf(hFileID, '\t%s_FLOAT mu;\n\n',solverName);
+        
+        fprintf(hFileID, '\t/* duality measure (after affine step) */\n');
+        fprintf(hFileID, '\t%s_FLOAT mu_aff;\n\n',solverName);
+        
+        fprintf(hFileID, '\t/* centering parameter */\n');
+        fprintf(hFileID, '\t%s_FLOAT sigma;\n\n',solverName);
+        
+        fprintf(hFileID, '\t/* number of backtracking line search steps (affine direction) */\n');
+        fprintf(hFileID, '\tint lsit_aff;\n\n');
+        
+        fprintf(hFileID, '\t/* number of backtracking line search steps (combined direction) */\n');
+        fprintf(hFileID, '\tint lsit_cc;\n\n');
+        
+        fprintf(hFileID, '\t/* step size (affine direction) */\n');
+        fprintf(hFileID, '\t%s_FLOAT step_aff;\n\n',solverName);
+        
+        fprintf(hFileID, '\t/* step size (combined direction) */\n');
+        fprintf(hFileID, '\t%s_FLOAT step_cc;\n\n',solverName);
+    end
 
 	fprintf(hFileID, '\t/* solvertime */\n');
 	fprintf(hFileID, '\t%s_FLOAT solvetime;\n\n',solverName);
@@ -179,9 +186,14 @@ else
 	
     fprintf(hFileID, '\t/* inf-norm of equality constraint residuals */\n');
     fprintf(hFileID, '\t%s_FLOAT res_eq[%u];\n\n',solverName,self.numSolvers);
-	
-    fprintf(hFileID, '\t/* inf-norm of inequality constraint residuals */\n');
-    fprintf(hFileID, '\t%s_FLOAT res_ineq[%u];\n\n',solverName,self.numSolvers);
+    
+    if strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % extra field for ADMM
+        fprintf(hFileID, '\t/* inf-norm of inequality constraint residuals */\n');
+        fprintf(hFileID, '\t%s_FLOAT res_dual[%u];\n\n',solverName,self.numSolvers);
+    else % not for ADMM
+        fprintf(hFileID, '\t/* inf-norm of inequality constraint residuals */\n');
+        fprintf(hFileID, '\t%s_FLOAT res_ineq[%u];\n\n',solverName,self.numSolvers);
+    end
 
     fprintf(hFileID, '\t/* primal objective */\n');
     fprintf(hFileID, '\t%s_FLOAT pobj[%u];\n\n',solverName,self.numSolvers);
@@ -195,26 +207,28 @@ else
     fprintf(hFileID, '\t/* relative duality gap := |dgap / pobj | */\n');
     fprintf(hFileID, '\t%s_FLOAT rdgap[%u];\n\n',solverName,self.numSolvers);
 
-    fprintf(hFileID, '\t/* duality measure */\n');
-    fprintf(hFileID, '\t%s_FLOAT mu[%u];\n\n',solverName,self.numSolvers);
+    if ~strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % not for ADMM
+        fprintf(hFileID, '\t/* duality measure */\n');
+        fprintf(hFileID, '\t%s_FLOAT mu[%u];\n\n',solverName,self.numSolvers);
 
-	fprintf(hFileID, '\t/* duality measure (after affine step) */\n');
-    fprintf(hFileID, '\t%s_FLOAT mu_aff[%u];\n\n',solverName,self.numSolvers);
-	
-    fprintf(hFileID, '\t/* centering parameter */\n');
-    fprintf(hFileID, '\t%s_FLOAT sigma[%u];\n\n',solverName,self.numSolvers);
-	
-    fprintf(hFileID, '\t/* number of backtracking line search steps (affine direction) */\n');
-    fprintf(hFileID, '\tint lsit_aff[%u];\n\n',self.numSolvers);
-    
-    fprintf(hFileID, '\t/* number of backtracking line search steps (combined direction) */\n');
-    fprintf(hFileID, '\tint lsit_cc[%u];\n\n',self.numSolvers);
-    
-    fprintf(hFileID, '\t/* step size (affine direction) */\n');
-    fprintf(hFileID, '\t%s_FLOAT step_aff[%u];\n\n',solverName,self.numSolvers);
-    
-    fprintf(hFileID, '\t/* step size (combined direction) */\n');
-    fprintf(hFileID, '\t%s_FLOAT step_cc[%u];\n\n',solverName,self.numSolvers);
+        fprintf(hFileID, '\t/* duality measure (after affine step) */\n');
+        fprintf(hFileID, '\t%s_FLOAT mu_aff[%u];\n\n',solverName,self.numSolvers);
+
+        fprintf(hFileID, '\t/* centering parameter */\n');
+        fprintf(hFileID, '\t%s_FLOAT sigma[%u];\n\n',solverName,self.numSolvers);
+
+        fprintf(hFileID, '\t/* number of backtracking line search steps (affine direction) */\n');
+        fprintf(hFileID, '\tint lsit_aff[%u];\n\n',self.numSolvers);
+
+        fprintf(hFileID, '\t/* number of backtracking line search steps (combined direction) */\n');
+        fprintf(hFileID, '\tint lsit_cc[%u];\n\n',self.numSolvers);
+
+        fprintf(hFileID, '\t/* step size (affine direction) */\n');
+        fprintf(hFileID, '\t%s_FLOAT step_aff[%u];\n\n',solverName,self.numSolvers);
+
+        fprintf(hFileID, '\t/* step size (combined direction) */\n');
+        fprintf(hFileID, '\t%s_FLOAT step_cc[%u];\n\n',solverName,self.numSolvers);
+    end
 
 	fprintf(hFileID, '\t/* solvertime */\n');
 	fprintf(hFileID, '\t%s_FLOAT solvetime[%u];\n\n',solverName,self.numSolvers);
@@ -353,8 +367,13 @@ for k=1:self.numSolvers
         fprintf(cFileID, '\t/* res_eq */\n');
         fprintf(cFileID, '\tinfo->res_eq = info_%u.res_eq;\n\n',k);
 
-        fprintf(cFileID, '\t/* res_ineq */\n');
-        fprintf(cFileID, '\tinfo->res_ineq = info_%u.res_ineq;\n\n',k);
+        if strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % extra field for ADMM
+            fprintf(cFileID, '\t/* res_dual */\n');
+            fprintf(cFileID, '\tinfo->res_dual = info_%u.res_dual;\n\n',k);            
+        else % not for ADMM
+            fprintf(cFileID, '\t/* res_ineq */\n');
+            fprintf(cFileID, '\tinfo->res_ineq = info_%u.res_ineq;\n\n',k);
+        end
 
         fprintf(cFileID, '\t/* pobj */\n');
         fprintf(cFileID, '\tinfo->pobj = info_%u.pobj;\n\n',k);
@@ -367,27 +386,29 @@ for k=1:self.numSolvers
 
         fprintf(cFileID, '\t/* rdgap */\n');
         fprintf(cFileID, '\tinfo->rdgap = info_%u.rdgap;\n\n',k);
+        
+        if ~strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % not for ADMM
+            fprintf(cFileID, '\t/* mu */\n');
+            fprintf(cFileID, '\tinfo->mu = info_%u.mu;\n\n',k);
 
-        fprintf(cFileID, '\t/* mu */\n');
-        fprintf(cFileID, '\tinfo->mu = info_%u.mu;\n\n',k);
+            fprintf(cFileID, '\t/* mu_aff */\n');
+            fprintf(cFileID, '\tinfo->mu_aff = info_%u.mu_aff;\n\n',k);
 
-        fprintf(cFileID, '\t/* mu_aff */\n');
-        fprintf(cFileID, '\tinfo->mu_aff = info_%u.mu_aff;\n\n',k);
+            fprintf(cFileID, '\t/* sigma */\n');
+            fprintf(cFileID, '\tinfo->sigma = info_%u.sigma;\n\n',k);
 
-        fprintf(cFileID, '\t/* sigma */\n');
-        fprintf(cFileID, '\tinfo->sigma = info_%u.sigma;\n\n',k);
+            fprintf(cFileID, '\t/* lsit_aff */\n\n');
+            fprintf(cFileID, '\tinfo->lsit_aff = info_%u.lsit_aff;\n\n',k);
 
-        fprintf(cFileID, '\t/* lsit_aff */\n\n');
-        fprintf(cFileID, '\tinfo->lsit_aff = info_%u.lsit_aff;\n\n',k);
+            fprintf(cFileID, '\t/* lsit_cc */\n');
+            fprintf(cFileID, '\tinfo->lsit_cc = info_%u.lsit_cc;\n\n',k);
 
-        fprintf(cFileID, '\t/* lsit_cc */\n');
-        fprintf(cFileID, '\tinfo->lsit_cc = info_%u.lsit_cc;\n\n',k);
+            fprintf(cFileID, '\t/* step_aff */\n');
+            fprintf(cFileID, '\tinfo->step_aff = info_%u.step_aff;\n\n',k);
 
-        fprintf(cFileID, '\t/* step_aff */\n');
-        fprintf(cFileID, '\tinfo->step_aff = info_%u.step_aff;\n\n',k);
-
-        fprintf(cFileID, '\t/* step_cc */\n');
-        fprintf(cFileID, '\tinfo->step_cc = info_%u.step_cc;\n\n',k);
+            fprintf(cFileID, '\t/* step_cc */\n');
+            fprintf(cFileID, '\tinfo->step_cc = info_%u.step_cc;\n\n',k);
+        end
 
         fprintf(cFileID, '\t/* solver time */\n');
         fprintf(cFileID, '\tinfo->solvetime = info_%u.solvetime;\n\n\n',k);
@@ -401,8 +422,14 @@ for k=1:self.numSolvers
         fprintf(cFileID, '\t/* res_eq */\n');
         fprintf(cFileID, '\tinfo->res_eq[%u] = info_%u.res_eq;\n\n',k-1,k);
 
-        fprintf(cFileID, '\t/* res_ineq */\n');
-        fprintf(cFileID, '\tinfo->res_ineq[%u] = info_%u.res_ineq;\n\n',k-1,k);
+        
+        if strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % extra field for ADMM
+            fprintf(cFileID, '\t/* res_ineq */\n');
+            fprintf(cFileID, '\tinfo->res_dual[%u] = info_%u.res_dual;\n\n',k-1,k);
+        else % not for ADMM
+            fprintf(cFileID, '\t/* res_ineq */\n');
+            fprintf(cFileID, '\tinfo->res_ineq[%u] = info_%u.res_ineq;\n\n',k-1,k);
+        end
 
         fprintf(cFileID, '\t/* pobj */\n');
         fprintf(cFileID, '\tinfo->pobj[%u] = info_%u.pobj;\n\n',k-1,k);
@@ -416,26 +443,28 @@ for k=1:self.numSolvers
         fprintf(cFileID, '\t/* rdgap */\n');
         fprintf(cFileID, '\tinfo->rdgap[%u] = info_%u.rdgap;\n\n',k-1,k);
 
-        fprintf(cFileID, '\t/* mu */\n');
-        fprintf(cFileID, '\tinfo->mu[%u] = info_%u.mu;\n\n',k-1,k);
+        if ~strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % not for ADMM
+            fprintf(cFileID, '\t/* mu */\n');
+            fprintf(cFileID, '\tinfo->mu[%u] = info_%u.mu;\n\n',k-1,k);
 
-        fprintf(cFileID, '\t/* mu_aff */\n');
-        fprintf(cFileID, '\tinfo->mu_aff[%u] = info_%u.mu_aff;\n\n',k-1,k);
+            fprintf(cFileID, '\t/* mu_aff */\n');
+            fprintf(cFileID, '\tinfo->mu_aff[%u] = info_%u.mu_aff;\n\n',k-1,k);
 
-        fprintf(cFileID, '\t/* sigma */\n');
-        fprintf(cFileID, '\tinfo->sigma[%u] = info_%u.sigma;\n\n',k-1,k);
+            fprintf(cFileID, '\t/* sigma */\n');
+            fprintf(cFileID, '\tinfo->sigma[%u] = info_%u.sigma;\n\n',k-1,k);
 
-        fprintf(cFileID, '\t/* lsit_aff */\n');
-        fprintf(cFileID, '\tinfo->lsit_aff[%u] = info_%u.lsit_aff;\n\n',k-1,k);
+            fprintf(cFileID, '\t/* lsit_aff */\n');
+            fprintf(cFileID, '\tinfo->lsit_aff[%u] = info_%u.lsit_aff;\n\n',k-1,k);
 
-        fprintf(cFileID, '\t/* lsit_cc */\n');
-        fprintf(cFileID, '\tinfo->lsit_cc[%u] = info_%u.lsit_cc;\n\n',k-1,k);
+            fprintf(cFileID, '\t/* lsit_cc */\n');
+            fprintf(cFileID, '\tinfo->lsit_cc[%u] = info_%u.lsit_cc;\n\n',k-1,k);
 
-        fprintf(cFileID, '\t/* step_aff */\n');
-        fprintf(cFileID, '\tinfo->step_aff[%u] = info_%u.step_aff;\n\n',k-1,k);
+            fprintf(cFileID, '\t/* step_aff */\n');
+            fprintf(cFileID, '\tinfo->step_aff[%u] = info_%u.step_aff;\n\n',k-1,k);
 
-        fprintf(cFileID, '\t/* step_cc */\n');
-        fprintf(cFileID, '\tinfo->step_cc[%u] = info_%u.step_cc;\n\n',k-1,k);
+            fprintf(cFileID, '\t/* step_cc */\n');
+            fprintf(cFileID, '\tinfo->step_cc[%u] = info_%u.step_cc;\n\n',k-1,k);
+        end
 
         fprintf(cFileID, '\t/* solver time */\n');
         fprintf(cFileID, '\tinfo->solvetime[%u] = info_%u.solvetime;\n\n\n',k-1,k);

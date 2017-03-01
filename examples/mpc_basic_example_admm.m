@@ -35,12 +35,7 @@ N = 10;
 % cost matrices
 Q = eye(2);
 R = eye(1);
-if exist('dlqr', 'file')
-    [~,P] = dlqr(A,B,Q,R);
-else
-    fprintf('Did not find dlqr (part of the Control Systems Toolbox). Will use 10*Q for the terminal cost matrix.\n');
-    P = 10*Q;
-end
+P = 10*Q;
 
 % constraints
 umin = -0.5;     umax = 0.5;
@@ -78,6 +73,7 @@ end
 % https://www.embotech.com/FORCES-Pro/User-Manual/Low-level-Interface/Solver-Options
 codeoptions = getOptions('simpleMPC_solver_ADMM'); % give solver a name
 codeoptions.solvemethod = 'ADMM'; % use ADMM as solve method
+codeoptions.maxit = 1000;
 controller = optimizerFORCES(const, cost, codeoptions, xinit, U(:,1), {'xinit'}, {'u0'});
 
 
