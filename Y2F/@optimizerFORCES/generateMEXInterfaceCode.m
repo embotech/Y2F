@@ -68,7 +68,7 @@ end
 fprintf(fileID, '\tconst char *fname;\n\n');
 
 % Solver info fields
-if ~strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % not for ADMM
+if ~isfield(self.default_codeoptions, 'solvemethod') || ~strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % not for ADMM
     fprintf(fileID, '\tconst char *infofields[16] = { "it", "it2opt", "res_eq", "res_ineq",  "pobj",  "dobj",  "dgap", "rdgap",  "mu",  "mu_aff",  "sigma",  "lsit_aff",  "lsit_cc",  "step_aff",   "step_cc",  "solvetime"};\n\n');
 else % ADMM has slightly different fields
     fprintf(fileID, '\tconst char *infofields[9] = { "it", "it2opt", "res_eq", "res_dual",  "pobj",  "dobj",  "dgap", "rdgap", "solvetime"};\n\n');    
@@ -173,7 +173,7 @@ if self.numSolvers > 1
 
     fprintf(fileID, '\t/* copy info structs */\n');
     fprintf(fileID, '\tif( nlhs > 2 ) {\n');
-    if strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % ADMM has different fields
+    if isfield(self.default_codeoptions, 'solvemethod') && strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % ADMM has different fields
         fprintf(fileID, '\t\tplhs[2] = mxCreateStructMatrix(%u, 1, 9, infofields);\n\n', self.numSolvers);
     else
         fprintf(fileID, '\t\tplhs[2] = mxCreateStructMatrix(%u, 1, 16, infofields);\n\n', self.numSolvers);
@@ -197,7 +197,7 @@ if self.numSolvers > 1
         fprintf(fileID, '\t\t*mxGetPr(outvar) = info.res_eq[%u];\n',i-1);
         fprintf(fileID, '\t\tmxSetField(plhs[2], %u, "res_eq", outvar);\n\n',i-1);
 
-        if strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % extra field for ADMM
+        if isfield(self.default_codeoptions, 'solvemethod') && strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % extra field for ADMM
             fprintf(fileID, '\t\t/* res_dual */\n');
             fprintf(fileID, '\t\toutvar = mxCreateDoubleMatrix(1, 1, mxREAL);\n');
             fprintf(fileID, '\t\t*mxGetPr(outvar) = info.res_dual[%u];\n',i-1);
@@ -229,7 +229,7 @@ if self.numSolvers > 1
         fprintf(fileID, '\t\t*mxGetPr(outvar) = info.rdgap[%u];\n',i-1);
         fprintf(fileID, '\t\tmxSetField(plhs[2], %u, "rdgap", outvar);\n\n',i-1);
 
-        if ~strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % not for ADMM
+        if ~isfield(self.default_codeoptions, 'solvemethod') || ~strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % not for ADMM
             fprintf(fileID, '\t\t/* mu */\n');
             fprintf(fileID, '\t\toutvar = mxCreateDoubleMatrix(1, 1, mxREAL);\n');
             fprintf(fileID, '\t\t*mxGetPr(outvar) = info.mu[%u];\n',i-1);
@@ -281,7 +281,7 @@ else % only one solver --> no cell arrays necessary
 
     fprintf(fileID, '\t/* copy info struct */\n');
     fprintf(fileID, '\tif( nlhs > 2 ) {\n');
-    if strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % ADMM has different fields
+    if isfield(self.default_codeoptions, 'solvemethod') && strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % ADMM has different fields
         fprintf(fileID, '\t\tplhs[2] = mxCreateStructMatrix(1, 1, 9, infofields);\n\n');
     else
         fprintf(fileID, '\t\tplhs[2] = mxCreateStructMatrix(1, 1, 16, infofields);\n\n');
@@ -302,7 +302,7 @@ else % only one solver --> no cell arrays necessary
     fprintf(fileID, '\t\t*mxGetPr(outvar) = info.res_eq;\n');
     fprintf(fileID, '\t\tmxSetField(plhs[2], 0, "res_eq", outvar);\n\n');
 
-    if strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % extra field for ADMM
+    if isfield(self.default_codeoptions, 'solvemethod') && strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % extra field for ADMM
         fprintf(fileID, '\t\t/* res_dual */\n');
         fprintf(fileID, '\t\toutvar = mxCreateDoubleMatrix(1, 1, mxREAL);\n');
         fprintf(fileID, '\t\t*mxGetPr(outvar) = info.res_dual;\n');
@@ -334,7 +334,7 @@ else % only one solver --> no cell arrays necessary
     fprintf(fileID, '\t\t*mxGetPr(outvar) = info.rdgap;\n');
     fprintf(fileID, '\t\tmxSetField(plhs[2], 0, "rdgap", outvar);\n\n');
 
-    if ~strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % not for ADMM
+    if ~isfield(self.default_codeoptions, 'solvemethod') || ~strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % not for ADMM
         fprintf(fileID, '\t\t/* mu */\n');
         fprintf(fileID, '\t\toutvar = mxCreateDoubleMatrix(1, 1, mxREAL);\n');
         fprintf(fileID, '\t\t*mxGetPr(outvar) = info.mu;\n');

@@ -124,7 +124,7 @@ if self.numSolvers == 1
     fprintf(hFileID, '\t/* inf-norm of equality constraint residuals */\n');
     fprintf(hFileID, '\t%s_FLOAT res_eq;\n\n',solverName);
 	
-    if strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % extra field for ADMM
+    if isfield(self.default_codeoptions, 'solvemethod') && strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % extra field for ADMM
         fprintf(hFileID, '\t/* inf-norm of dual residual */\n');
         fprintf(hFileID, '\t%s_FLOAT res_dual;\n\n',solverName);
     else % not for ADMM
@@ -144,7 +144,7 @@ if self.numSolvers == 1
     fprintf(hFileID, '\t/* relative duality gap := |dgap / pobj | */\n');
     fprintf(hFileID, '\t%s_FLOAT rdgap;\n\n',solverName);
 
-    if ~strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % not for ADMM
+    if ~isfield(self.default_codeoptions, 'solvemethod') || ~strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % not for ADMM
         fprintf(hFileID, '\t/* duality measure */\n');
         fprintf(hFileID, '\t%s_FLOAT mu;\n\n',solverName);
         
@@ -187,7 +187,7 @@ else
     fprintf(hFileID, '\t/* inf-norm of equality constraint residuals */\n');
     fprintf(hFileID, '\t%s_FLOAT res_eq[%u];\n\n',solverName,self.numSolvers);
     
-    if strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % extra field for ADMM
+    if isfield(self.default_codeoptions, 'solvemethod') && strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % extra field for ADMM
         fprintf(hFileID, '\t/* inf-norm of inequality constraint residuals */\n');
         fprintf(hFileID, '\t%s_FLOAT res_dual[%u];\n\n',solverName,self.numSolvers);
     else % not for ADMM
@@ -207,7 +207,7 @@ else
     fprintf(hFileID, '\t/* relative duality gap := |dgap / pobj | */\n');
     fprintf(hFileID, '\t%s_FLOAT rdgap[%u];\n\n',solverName,self.numSolvers);
 
-    if ~strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % not for ADMM
+    if ~isfield(self.default_codeoptions, 'solvemethod') || ~strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % not for ADMM
         fprintf(hFileID, '\t/* duality measure */\n');
         fprintf(hFileID, '\t%s_FLOAT mu[%u];\n\n',solverName,self.numSolvers);
 
@@ -367,7 +367,7 @@ for k=1:self.numSolvers
         fprintf(cFileID, '\t/* res_eq */\n');
         fprintf(cFileID, '\tinfo->res_eq = info_%u.res_eq;\n\n',k);
 
-        if strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % extra field for ADMM
+        if isfield(self.default_codeoptions, 'solvemethod') && strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % extra field for ADMM
             fprintf(cFileID, '\t/* res_dual */\n');
             fprintf(cFileID, '\tinfo->res_dual = info_%u.res_dual;\n\n',k);            
         else % not for ADMM
@@ -387,7 +387,7 @@ for k=1:self.numSolvers
         fprintf(cFileID, '\t/* rdgap */\n');
         fprintf(cFileID, '\tinfo->rdgap = info_%u.rdgap;\n\n',k);
         
-        if ~strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % not for ADMM
+        if ~isfield(self.default_codeoptions, 'solvemethod') || ~strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % not for ADMM
             fprintf(cFileID, '\t/* mu */\n');
             fprintf(cFileID, '\tinfo->mu = info_%u.mu;\n\n',k);
 
@@ -423,7 +423,7 @@ for k=1:self.numSolvers
         fprintf(cFileID, '\tinfo->res_eq[%u] = info_%u.res_eq;\n\n',k-1,k);
 
         
-        if strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % extra field for ADMM
+        if isfield(self.default_codeoptions, 'solvemethod') && strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % extra field for ADMM
             fprintf(cFileID, '\t/* res_ineq */\n');
             fprintf(cFileID, '\tinfo->res_dual[%u] = info_%u.res_dual;\n\n',k-1,k);
         else % not for ADMM
@@ -443,7 +443,7 @@ for k=1:self.numSolvers
         fprintf(cFileID, '\t/* rdgap */\n');
         fprintf(cFileID, '\tinfo->rdgap[%u] = info_%u.rdgap;\n\n',k-1,k);
 
-        if ~strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % not for ADMM
+        if ~isfield(self.default_codeoptions, 'solvemethod') || ~strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % not for ADMM
             fprintf(cFileID, '\t/* mu */\n');
             fprintf(cFileID, '\tinfo->mu[%u] = info_%u.mu;\n\n',k-1,k);
 
