@@ -94,7 +94,11 @@ switch nargin
 end
 
 % Make valid solver name
-codeoptions.name = matlab.lang.makeValidName(codeoptions.name);
+if ~verLessThan('matlab', '8.3')
+    codeoptions.name = matlab.lang.makeValidName(codeoptions.name);
+else
+    codeoptions.name = genvarname(codeoptions.name);
+end
 
 % We need parameters
 if isempty(parameters)
@@ -108,8 +112,12 @@ if nargin >= 6
     end
     
     % Fix names (make them valid and unique)
-    parameterNames = matlab.lang.makeValidName(parameterNames);
-    parameterNames = matlab.lang.makeUniqueStrings(parameterNames);
+    if ~verLessThan('matlab', '8.3')
+        parameterNames = matlab.lang.makeValidName(parameterNames);
+        parameterNames = matlab.lang.makeUniqueStrings(parameterNames);
+    else
+        parameterNames = genvarname(parameterNames);
+    end
 elseif isa(solverOutputs,'sdpvar')
     % Single parameter supplied, we might get its name!
     name = inputname(4);
@@ -133,8 +141,12 @@ if nargin >= 7
     end
     
     % Fix names (make them valid and unique)
-    outputNames = matlab.lang.makeValidName(outputNames);
-    outputNames = matlab.lang.makeUniqueStrings(outputNames);
+    if ~verLessThan('matlab', '8.3')
+        outputNames = matlab.lang.makeValidName(outputNames);
+        outputNames = matlab.lang.makeUniqueStrings(outputNames);
+    else
+        outputNames = genvarname(outputNames);
+    end
 elseif isa(solverOutputs,'sdpvar')
     % Single output supplied, we might get its name!
     name = inputname(5);
