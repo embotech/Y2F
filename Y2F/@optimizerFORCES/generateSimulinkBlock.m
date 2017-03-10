@@ -17,21 +17,65 @@ if ~isdir(solverName)
     error('Solver ''%s'' has not been generated!', solverName)
 end
 
-model = [solverName '_lib'];
+library = 'y2f_simulink_lib';
 block = solverName;
 
 % Create Simulink library
-if exist(model)
-    close_system(model, 0);
-end
-new_system(model, 'Library');
+if exist(library) % library found, no need to create one
+    disp('Found existing Y2F Simulink library.')
+    load_system(library);
+    
+    % we need to unlock the library to edit it
+    set_param(library,'Lock','off') 
+else % no library found
+    disp('Y2F Simulink library not found, creating new one.')
+    
+    % Check if slblocks.m exists, if yes ask user if we can overwrite it
+    if ~isempty(dir('slblocks.m'))
+        while 1
+            beep
+            in = input(['[' 8 'slblocks.m already exists in the current folder. Y2F needs to overwrite it to create the Simulink library.\nDo you want to continue [y/n]? ]' 8],'s');
+            if strcmpi(in,'y')
+                break
+            elseif strcmpi(in,'n')
+                error('Y2F could not create Simulink library.');
+            end
+        end
+    end
+    
+    % Create library
+    new_system(library, 'Library');
+    
+    % Create slblocks.m to "register" Y2F library
+    mFileID = fopen('slblocks.m','w');
+    
+    fprintf(mFileID, 'function blkStruct = slblocks\n');
+    fprintf(mFileID, '%% This function specifies that the Y2F library should appear in the\n');
+    fprintf(mFileID, '%% Library Browser and be cached in the browser repository\n');
+    fprintf(mFileID, 'Browser.Library = ''y2f_simulink_lib'';\n');
+    fprintf(mFileID, 'Browser.Name = ''Y2F FORCES Pro Solvers'';\n');
+    fprintf(mFileID, 'blkStruct.Browser = Browser;\n');
+    
+    fclose(mFileID);
 
-% Add S-function block
-add_block('built-in/S-Function', [model '/' block]);
-set_param([model '/' block], 'FunctionName', [solverName '_simulinkBlock']);
+end
+
+% Add S-function block if it doesn't exist already
+blocks = find_system(library);
+if ~any(cell2mat(strfind(blocks,[library '/' block])))
+    add_block('built-in/S-Function', [library '/' block]);
+    
+    % Create mask
+    mask = Simulink.Mask.create([library '/' block]);
+else
+    % We need to load the mask to edit it
+    mask = Simulink.Mask.get([library '/' block]);
+end
+
+% Set right parameters, ports, etc. for block
+set_param([library '/' block], 'FunctionName', [solverName '_simulinkBlock']);
 
 % Create mask to name input/output ports and add image
-mask = Simulink.Mask.create([model '/' block]);
 
 iconDrawingString = 'image(''forcesprologo.jpg'', ''center'', ''on'')';
 for i=1:self.numParams
@@ -46,15 +90,15 @@ if (isfield(self.default_codeoptions,'showinfo') && self.default_codeoptions.sho
     iconDrawingString = sprintf('%s;port_label(''output'', %u, ''solve_time'')',iconDrawingString,numel(self.outputSize)+3);
     iconDrawingString = sprintf('%s;port_label(''output'', %u, ''primal_obj'')',iconDrawingString,numel(self.outputSize)+4);
 end
-set_param([model '/' block], 'MaskDisplay', iconDrawingString)
+set_param([library '/' block], 'MaskDisplay', iconDrawingString)
 
 % Set position of block
-set_param([model '/' block], 'Position', [170, 99, 550, 200])
+set_param([library '/' block], 'Position', [170, 99, 550, 200])
 
 % Generate description and help
 desc = sprintf(['---- Simulink block encapsulating your customized solver %s ----\n\n' ...
     '%s : A fast customized optimization solver.'], solverName, solverName);
-set_param([model '/' block], 'MaskDescription', desc);
+set_param([library '/' block], 'MaskDescription', desc);
 
 help = sprintf('%s_simulinkBlock provides an easy Simulink interface for simulating your customized solver.\n\n',solverName);
 help = sprintf('%sOUTPUTS = %s(INPUTS) solves an optimization problem where:\n\n', help, solverName);
@@ -88,14 +132,12 @@ end
 
 help = sprintf('%s\nFor more information, see https://www.embotech.com/FORCES-Pro/How-to-use/Simulink-Interface/Simulink-Block',help);
 
-set_param([model '/' block], 'MaskHelp', help);
+set_param([library '/' block], 'MaskHelp', help);
 
 % Save system
-filename = save_system(model);
-close_system(model, 0);
-
-% Move library to interface folder
-movefile(filename, [solverName '/interface'])
+set_param(gcs,'EnableLBRepository','on'); % enable library in browser
+filename = save_system(library);
+close_system(library, 0);
 
 end
 
