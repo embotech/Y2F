@@ -63,7 +63,7 @@ end
 if (ispc)
     libs = cell(1,self.numSolvers);
     for i=1:self.numSolvers
-        libs{i} = ['-l' self.codeoptions{i}.name];
+        libs{i} = ['-l' self.codeoptions{i}.name '_static'];
     end
 end
 
@@ -73,10 +73,19 @@ if exist( [cName '.c'], 'file' ) && exist( [mexName '.c'], 'file' )
     mex('-c','-g','-outdir',[solverName '/interface'],[mexName '.c'])
     if( ispc ) % PC - we need additional libraries
         % figure our whether we need additional libraries indeed (Intel)
+        clientPath = fileparts(which('generateCode'));
+        intelLibsDir = [clientPath,filesep,'libs_intel'];
+        if( exist( intelLibsDir, 'dir' ) )
+            intelLibsDirFlag = ['-L', intelLibsDir];
+        else
+            intelLibsDirFlag = '';
+        end
+        addpath(intelLibsDir); savepath;
         if( exist([solverName,filesep,'lib'],'dir') )
             mex([solverName '/interface/*.obj'], '-output', outputName, ...
-                ['-L' solverName '/lib'], libs{:}, '-llibdecimal', ...
-                '-llibirc', '-llibmmt', '-lsvml_dispmt', '-lIPHLPAPI.lib');
+                ['-L' solverName '/lib'], libs{:}, ...
+                intelLibsDirFlag,'-llibdecimal', '-llibirc', '-llibmmt', '-lsvml_dispmt',...
+                '-lIPHLPAPI.lib');
         else
             % it seems that we have been compiling with VS only,
             % so we do not add the Intel libs and use only object files
