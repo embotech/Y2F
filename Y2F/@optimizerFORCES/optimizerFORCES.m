@@ -559,12 +559,16 @@ end
                 rows = find(H(:,i));
                 rows = rows(rows ~= i); % param*param just adds a constant term to cost
                 for row=rows'
-                    qcqpParams.f(end+1) = newAdditiveQcqpParam(row,p_idx,1,0.5*H(row,i));
+                    if ~any(paramVars == internalmodel.used_variables(row)) % param1*param2 just adds a constant term to cost
+                        qcqpParams.f(end+1) = newAdditiveQcqpParam(row,p_idx,1,0.5*H(row,i));
+                    end
                 end
                 cols = find(H(i,:));
                 cols = cols(cols ~= i); % param*param just adds a constant term to cost
                 for col=cols
-                    qcqpParams.f(end+1) = newAdditiveQcqpParam(col,p_idx,1,0.5*H(i,col));
+                    if ~any(paramVars == internalmodel.used_variables(col)) % param1*param2 just adds a constant term to cost
+                        qcqpParams.f(end+1) = newAdditiveQcqpParam(col,p_idx,1,0.5*H(i,col));
+                    end
                 end
 
                 % We can ignore it if param appears in f (just a constant term)
