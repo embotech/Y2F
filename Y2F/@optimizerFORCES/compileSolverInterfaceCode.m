@@ -61,9 +61,13 @@ end
 
 % Create a list of internal solver libraries for Windows
 if (ispc)
-    libs = cell(1,self.numSolvers);
-    for i=1:self.numSolvers
-        libs{i} = ['-l' self.codeoptions{i}.name '_static'];
+    if( exist([solverName,filesep,'lib'],'dir') )        
+        libs = cell(1,self.numSolvers);
+        for i=1:self.numSolvers
+            lib = dir([solverName,filesep,'lib/',self.codeoptions{i}.name,'*.lib']);
+            libs{i} = ['-l' lib.name(1:end-4)];
+            %libs{i} = ['-l' self.codeoptions{i}.name '_static'];
+        end
     end
 end
 

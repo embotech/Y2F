@@ -135,7 +135,8 @@ help = sprintf('%s\nFor more information, see https://www.embotech.com/FORCES-Pr
 set_param([library '/' block], 'MaskHelp', help);
 
 % Save system
-set_param(gcs,'EnableLBRepository','on'); % enable library in browser
+%set_param(gcs,'EnableLBRepository','on'); % enable library in browser
+set_param(library,'EnableLBRepository','on'); % enable library in browser
 filename = save_system(library);
 close_system(library, 0);
 
