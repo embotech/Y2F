@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.7
+
+- Fixed bug in MEX file compilation on Windows machines
+
 ## 0.1.6
 
 - Fixed bug affecting parsing of problems with parameters influencing cost
