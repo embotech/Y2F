@@ -59,48 +59,71 @@ for i=1:self.numSolvers
     end
 end
 
-% Create a list of internal solver libraries for Windows
-if (ispc)
-    if( exist([solverName,filesep,'lib'],'dir') )        
-        libs = cell(1,self.numSolvers);
-        for i=1:self.numSolvers
-            lib = dir([solverName,filesep,'lib/',self.codeoptions{i}.name,'*.lib']);
-            libs{i} = ['-l' lib.name(1:end-4)];
-            %libs{i} = ['-l' self.codeoptions{i}.name '_static'];
-        end
-    end
-end
-
 % final MEX build
 if exist( [cName '.c'], 'file' ) && exist( [mexName '.c'], 'file' )
-    mex('-c','-g','-outdir',[solverName '/interface'],[cName '.c'])
-    mex('-c','-g','-outdir',[solverName '/interface'],[mexName '.c'])
+    mex('-c','-g','-silent','-outdir',[solverName '/interface'],[cName '.c']) % compiles C interface
+    mex('-c','-g','-silent','-outdir',[solverName '/interface'],[mexName '.c']) % compiles MEX interface
+    
     if( ispc ) % PC - we need additional libraries
-        % figure our whether we need additional libraries indeed (Intel)
+        
+        % Create a list of internal solver libraries
+        if( exist([solverName,filesep,'lib'],'dir') )
+            libs = cell(1,self.numSolvers);
+            for i=1:self.numSolvers
+                lib = dir([solverName,filesep,'lib/',self.codeoptions{i}.name,'*.lib']);
+                libs{i} = ['-l' lib.name(1:end-4)];
+            end
+        end
+        
+        % figure our whether we need additional libraries for Intel
         clientPath = fileparts(which('generateCode'));
         intelLibsDir = [clientPath,filesep,'libs_intel'];
         if( exist( intelLibsDir, 'dir' ) )
             intelLibsDirFlag = ['-L', intelLibsDir];
+            addpath(intelLibsDir); savepath;
         else
             intelLibsDirFlag = '';
         end
-        addpath(intelLibsDir); savepath;
+        
+        % Figure out whether we need legacy libraries for Visual Studio        
+        try
+            thisCompiler = mex.getCompilerConfigurations('C','Selected');
+            mexcomp.name = thisCompiler(1).Name;
+            mexcomp.ver = thisCompiler(1).Version;
+            mexcomp.vendor = thisCompiler(1).Manufacturer;
+        catch
+            mexcomp = [];
+        end
+        if( ~isempty(mexcomp) ...
+           && ~isempty(strfind(mexcomp.vendor,'Microsoft')) ...
+           && str2double(mexcomp.ver) >= 14.0 )
+           legacyLibs = '-llegacy_stdio_definitions';
+        else
+           legacyLibs = '';
+        end
+        
+        % Call mex compiler
         if( exist([solverName,filesep,'lib'],'dir') )
-            mex([solverName '/interface/*.obj'], '-output', outputName, ...
-                ['-L' solverName '/lib'], libs{:}, ...
-                intelLibsDirFlag,'-llibdecimal', '-llibirc', '-llibmmt', '-lsvml_dispmt',...
-                '-lIPHLPAPI.lib');
+            mex([solverName '/interface/' solverName '.obj'], ...
+                [solverName '/interface/' solverName '_mex.obj'], ...
+                '-output', outputName, ...
+                ['-L' solverName '/lib'], libs{:}, intelLibsDirFlag, ...
+                '-ldecimal', '-lirc', '-lmmt', '-lsvml_dispmt', ...
+                legacyLibs, '-lIPHLPAPI.lib', '-largeArrayDims', '-silent');
         else
             % it seems that we have been compiling with VS only,
             % so we do not add the Intel libs and use only object files
-            mex([solverName, '/interface/*.obj'], [solverName '/obj/*.obj'], '-lIPHLPAPI.lib', '-output', [outputName(2:end-1),'.',mexext]);
+            mex([solverName, '/interface/' solverName '.obj'], ...
+                [solverName, '/interface/' solverName '_mex.obj'], ...
+                [solverName '/obj/*.obj'], '-lIPHLPAPI.lib', legacyLibs, ...
+                '-output', [outputName(2:end-1),'.',mexext], '-silent');
         end
-        delete([solverName '/interface/*.obj']);
+        % delete([solverName '/interface/*.obj']);
     elseif( ismac )
-        mex([solverName '/interface/*.o'], '-output', outputName) 
+        mex([solverName '/interface/*.o'], '-output', outputName, '-silent') 
         delete([solverName '/interface/*.o']);
     else % we're on a linux system
-        mex([solverName '/interface/*.o'], '-output', outputName,'-lrt') 
+        mex([solverName '/interface/*.o'], '-output', outputName,'-lrt', '-silent') 
         delete([solverName '/interface/*.o']);
     end
 else

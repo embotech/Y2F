@@ -55,6 +55,11 @@ fprintf(hFileID, '#include <stdio.h>\n\n');
 fprintf(hFileID, '#ifndef __%s_H__\n',solverName);
 fprintf(hFileID, '#define __%s_H__\n\n',solverName);
 
+% Visual Studio 2015 Compatibility
+fprintf(hFileID, '/* For Visual Studio 2015 Compatibility */\n');
+fprintf(hFileID, '#if _MSC_VER == 1900\n');
+fprintf(hFileID, 'FILE * __cdecl __iob_func(void);\n');
+fprintf(hFileID, '#endif\n');
 
 fprintf(hFileID, '/* DATA TYPE ------------------------------------------------------------*/\n');
 fprintf(hFileID, 'typedef double %s_FLOAT;\n\n',solverName);
@@ -261,6 +266,19 @@ for k=1:self.numSolvers
     fprintf(cFileID, '#include "../include/%s.h"\n',self.codeoptions{k}.name);
 end
 fprintf(cFileID, '#include <stdio.h>\n\n');
+
+% Visual Studio 2015 Compatibility
+fprintf(cFileID, '/* For Visual Studio 2015 Compatibility */\n');
+fprintf(cFileID, '#if _MSC_VER == 1900\n');
+fprintf(cFileID, 'FILE _iob[3];\n');
+fprintf(cFileID, 'FILE * __cdecl __iob_func(void)\n');
+fprintf(cFileID, '{\n');
+fprintf(cFileID, '    _iob[0] = *stdin;\n');
+fprintf(cFileID, '    _iob[1] = *stdout;\n');
+fprintf(cFileID, '    _iob[2] = *stderr;\n');
+fprintf(cFileID, '    return _iob;\n');
+fprintf(cFileID, '}\n');
+fprintf(cFileID, '#endif\n\n');
 
 % Arguments for solver(s)
 fprintf(cFileID, '/* Some memory */\n');
