@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.8
+
+- Fixed compilation for Visual Studio 2015 users
+
 ## 0.1.7
 
 - Fixed bug in MEX file compilation on Windows machines
