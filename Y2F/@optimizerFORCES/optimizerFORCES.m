@@ -190,7 +190,7 @@ end
 
 
 %% Call YALMIP and convert QP into FORCES format
-disp('This is Y2F (v0.1.7), the YALMIP interface of FORCES Pro.');
+disp('This is Y2F (v0.1.8), the YALMIP interface of FORCES Pro.');
 disp('For more information visit https://github.com/embotech/y2f');
 fprintf('\nUsing YALMIP to convert problem into QP...')
 tic;
