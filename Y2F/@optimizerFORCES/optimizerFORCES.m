@@ -540,83 +540,134 @@ end
                 end
             end
 
-            % Is this variable a linear parameter?
-            if is(var, 'linear') && ...
-                    any(paramVars == internalmodel.used_variables(i)) 
-
-                % Parameters cannot be binary
-                if binary
-                    error('Parameters cannot be binary.');
-                end
-
-                % index in parameter list (needed to recover value later on)
-                p_idx = find(paramVars == internalmodel.used_variables(i),1); 
-
-                % Variable is parameter --> remove it
-                removeIdx = [removeIdx i];
-
-                % Check if parameter appears in H --> put into f
-                rows = find(H(:,i));
-                rows = rows(rows ~= i); % param*param just adds a constant term to cost
-                for row=rows'
-                    if ~any(paramVars == internalmodel.used_variables(row)) % param1*param2 just adds a constant term to cost
-                        qcqpParams.f(end+1) = newAdditiveQcqpParam(row,{[p_idx, 1]},1,0.5*H(row,i));
-                    end
-                end
-                cols = find(H(i,:));
-                cols = cols(cols ~= i); % param*param just adds a constant term to cost
-                for col=cols
-                    if ~any(paramVars == internalmodel.used_variables(col)) % param1*param2 just adds a constant term to cost
-                        qcqpParams.f(end+1) = newAdditiveQcqpParam(col,{[p_idx, 1]},1,0.5*H(i,col));
-                    end
-                end
-
-                % We can ignore it if param appears in f (just a constant term)
-
-                % Check if parameter is used in Aineq --> add to bineq
-                rows = find(Aineq(:,i));
-                for row=rows'
-                    qcqpParams.bineq(end+1) = newAdditiveQcqpParam(row,{[p_idx, 1]},1,-Aineq(row,i));
-                end
-
-                % Check if parameter is used in Aeq --> add to beq
-                rows = find(Aeq(:,i));
-                for row=rows'
-                    qcqpParams.beq(end+1) = newAdditiveQcqpParam(row,{[p_idx, 1]},1,-Aeq(row,i));
-                end
-
-                % Check bounds
-                if lb(i) ~= -Inf || ub(i) ~= Inf
-                    beep
-                    warning('Y2F:parameterBounds','Bounds on parameters have no effect.')
-                end
-
-                % Quadratic constraints don't have to be checked
-
-            elseif ~is(var, 'linear')
+            if ~is(var, 'linear') || any(paramVars == internalmodel.used_variables(i)) % otherwise this is a linear decision variable (which we leave alone)
 
                 % Nonlinear variables cannot be binary
                 if binary
-                    error('Nonlinear variables cannot be binary.');
+                    error('Parameters and nonlinear variables cannot be binary.');
                 end
-
-                % Is variable bilinear/quadratic?
-                if sum(internalmodel.monomtable(i,:)) == 2 && nnz(internalmodel.monomtable(i,:)) >= 1 && nnz(internalmodel.monomtable(i,:)) <= 2
-                    % Is variable the square of another variable?
-                    if any(internalmodel.monomtable(i,:)==2)
-                        v_idx = find(internalmodel.monomtable(i,:)==2,1);
-                        assert(length(v_idx)==1);
-                        v = internalmodel.used_variables(v_idx);
-                        if any(paramVars == v)
-                            error('Parameters can only be used affinely.')
+                
+                % Identify yalmip variables
+                idx = find(internalmodel.monomtable(i,:)); % used yalmip variable indices
+                paramIdx = zeros(1,0);
+                varIdx = zeros(1,0);
+                % split yalmip variables into params and variables
+                for id=idx
+                    if any(paramVars == internalmodel.used_variables(id)) % we have a parameter
+                        paramIdx(end+1) = id;
+                    else % decision variable
+                        if internalmodel.monomtable(i,id) ~= 1 && internalmodel.monomtable(i,id) ~= 2
+                            error('Only linear and quadratic terms allowed. You have a term of order %i.', internalmodel.monomtable(i,id))
+                        end
+                        varIdx(end+1) = id;
+                    end
+                end
+                
+                % Make sure that only linear & quadratic terms make it through
+                if sum(internalmodel.monomtable(i,varIdx)) > 2
+                	error('Only linear and quadratic terms allowed. You have a term of order %i.', sum(internalmodel.monomtable(i,varIdx)))
+                end
+                
+                if ~isempty(paramIdx) % we have parameters
+                    % Create "origin" cell array for parameter part (see
+                    % newAdditiveQcqpParam for better explanation)
+                    paramOrigin = cell(1,0);
+                    for id=paramIdx
+                        paramOrigin(end+1) = {[find(paramVars == internalmodel.used_variables(id),1), internalmodel.monomtable(i,id)]};
+                    end
+                    
+                    if numel(varIdx) == 0 % constant (parametric) term 
+                        % Variable is parameter --> remove it
+                        removeIdx = [removeIdx i];
+                        
+                        if f(i) ~= 0 || H(i,i) ~= 0 % constant term in cost --> ignore it
+                            beep
+                            warning('Y2F:constantCostTerm','Constant terms in cost are ignored by Y2F. Objective value of solver will not be exact value of cost function.')
                         end
 
-                        % Remove this pseudo-variable
+                        % Check if parameter appears in H --> put into f
+                        rows = find(H(:,i));
+                        rows = rows(rows ~= i); % param*param just adds a constant term to cost
+                        for row=rows'
+                            if ~any(paramVars == internalmodel.used_variables(row)) % param1*param2 just adds a constant term to cost
+                                qcqpParams.f(end+1) = newAdditiveQcqpParam(row,paramOrigin,1,0.5*H(row,i));
+                            else
+                                beep
+                                warning('Y2F:constantCostTerm','Constant terms in cost are ignored by Y2F. Objective value of solver will not be exact value of cost function.')                                
+                            end
+                        end
+                        cols = find(H(i,:));
+                        cols = cols(cols ~= i); % param*param just adds a constant term to cost
+                        for col=cols
+                            if ~any(paramVars == internalmodel.used_variables(col)) % param1*param2 just adds a constant term to cost
+                                qcqpParams.f(end+1) = newAdditiveQcqpParam(col,paramOrigin,1,0.5*H(i,col));
+                            else
+                                beep
+                                warning('Y2F:constantCostTerm','Constant terms in cost are ignored by Y2F. Objective value of solver will not be exact value of cost function.')   
+                            end
+                        end
+
+                        % We can ignore it if param appears in f (just a constant term)
+
+                        % Check if parameter is used in Aineq --> add to bineq
+                        rows = find(Aineq(:,i));
+                        for row=rows'
+                            qcqpParams.bineq(end+1) = newAdditiveQcqpParam(row,paramOrigin,1,-Aineq(row,i));
+                        end
+
+                        % Check if parameter is used in Aeq --> add to beq
+                        rows = find(Aeq(:,i));
+                        for row=rows'
+                            qcqpParams.beq(end+1) = newAdditiveQcqpParam(row,paramOrigin,1,-Aeq(row,i));
+                        end
+
+                        % Check bounds
+                        if lb(i) ~= -Inf || ub(i) ~= Inf
+                            beep
+                            warning('Y2F:parameterBounds','Bounds on parameters have no effect.')
+                        end
+                        
+                    elseif numel(varIdx) == 1 && internalmodel.monomtable(i,varIdx) == 1 % linear term
+                        % Variable contains parameter(s) --> remove it
                         removeIdx = [removeIdx i];
 
-                        % If it appears in the linear cost --> move it
+                        % Does linear term influence cost?
                         if f(i) ~= 0
-                            H(v_idx,v_idx) = H(v_idx,v_idx) + 2*f(i);
+                            qcqpParams.f(end+1) = newAdditiveQcqpParam(varIdx,paramOrigin,1,f(i));
+                        end
+
+                        if any(H(:,i)) || any(H(i,:)) % yalmip does not generate these terms
+                            error('Internal error. Please contact support@embotech.ch.')
+                        end
+
+                        % Check if parameter is used in Aineq
+                        rows = find(Aineq(:,i));
+                        for row=rows'
+                            qcqpParams.Aineq(end+1) = newAdditiveQcqpParam(sub2ind(size(Aineq),row,varIdx),paramOrigin,1,Aineq(row,i));
+                        end
+
+                        % Check if parameter is used in Aeq
+                        rows = find(Aeq(:,i));
+                        for row=rows'
+                            qcqpParams.Aeq(end+1) = newAdditiveQcqpParam(sub2ind(size(Aeq),row,varIdx),paramOrigin,1,Aeq(row,i));
+                        end
+
+                        % Check bounds
+                        if lb(i) ~= -Inf || ub(i) ~= Inf
+                            beep
+                            warning('Y2F:bilinearTermBounds','Bounds on bilinear terms have no effect.')
+                        end
+                    else % should be a quadratic or bilinear term                        
+                        % Variable is parameter --> remove it
+                        removeIdx = [removeIdx i];
+
+                        if f(i) ~= 0 % pseudo-variable affects cost --> param in H
+                            if numel(varIdx) > 1
+                                qcqpParams.H(end+1) = newAdditiveQcqpParam(sub2ind(size(H),varIdx(1),varIdx(end)),paramOrigin,1,f(i));
+                                qcqpParams.H(end+1) = newAdditiveQcqpParam(sub2ind(size(H),varIdx(end),varIdx(1)),paramOrigin,1,f(i));
+                            else
+                                qcqpParams.H(end+1) = newAdditiveQcqpParam(sub2ind(size(H),varIdx,varIdx),paramOrigin,1,2*f(i));
+                            end
                         end
 
                         % Cannot appear in quadratic cost
@@ -626,168 +677,41 @@ end
 
                         % Cannot appear in equalities
                         if nnz(Aeq(:,i)) > 0
-                            error('Quadratic equalities are not supported.')
+                            error('Nonlinear equalities are not allowed.')
                         end
 
                         % Check bounds
                         if lb(i) ~= -Inf || ub(i) ~= Inf
                             beep
-                            warning('Y2F:quadraticTermBounds','Bounds on quadratic terms have no effect.')
+                            warning('Y2F:nonlinearTermBounds','Bounds on nonlinear terms have no effect.')
                         end
 
-                        % Check if variable is used in Aineq --> put in quad. ineq.
+                        % Check inequalities
                         rows = find(Aineq(:,i));
                         for row=rows'
                             [k,quadIneq,Q,l,r] = findOrCreateQuadraticInequality(row,quadIneq,Q,l,r);
-                            Q{k}(v_idx,v_idx) = Aineq(row,i);
-                        end
-
-                    % Is it bilinearly dependent!
-                    % (e.g. if C_i is a parameter)
-                    else
-                        deps_idx = find(internalmodel.monomtable(i,:)==1);
-                        assert(length(deps_idx) == 2);
-                        deps = internalmodel.used_variables(deps_idx);
-
-                        if all(ismember(deps, paramVars))
-                            error('Parameters can only be used affinely.')
-                        end
-
-                        if ~any(ismember(deps, paramVars)) % no parameter
-                            % Remove this pseudo-variable
-                            removeIdx = [removeIdx i];
-
-                            % If it appears in the linear cost --> move it
-                            if f(i) ~= 0
-                                H(deps_idx(1),deps_idx(2)) = H(deps_idx(1),deps_idx(2)) + f(i);
-                                H(deps_idx(2),deps_idx(1)) = H(deps_idx(2),deps_idx(1)) + f(i);
-                            end
-
-                            % Cannot appear in quadratic cost
-                            if nnz(H(i,:)) > 0 || nnz(H(:,i)) > 0
-                                error('Non-quadratic term appears in cost.')
-                            end
-
-                            % Cannot appear in equalities
-                            if nnz(Aeq(:,i)) > 0
-                                error('Bilinear equalities are not supported.')
-                            end
-
-                            % Check bounds
-                            if lb(i) ~= -Inf || ub(i) ~= Inf
-                                beep
-                                warning('Y2F:bilinearTermBounds','Bounds on bilinear terms have no effect.')
-                            end
-
-                            % Check if variable is used in Aineq --> put in quad. ineq.
-                            rows = find(Aineq(:,i));
-                            for row=rows'
-                                [k,quadIneq,Q,l,r] = findOrCreateQuadraticInequality(row,quadIneq,Q,l,r);
-                                Q{k}(deps_idx(1),deps_idx(2)) = 0.5*Aineq(row,i);
-                                Q{k}(deps_idx(2),deps_idx(1)) = 0.5*Aineq(row,i);
-                            end
-
-                        else % a parameter is involed
-                            if any(deps(1) == paramVars) && ...
-                                    ~any(deps(2) == paramVars) && ...
-                                    is(recover(deps(2)),'linear')
-                                v = deps(2); % variable
-                                v_idx = find(internalmodel.used_variables == v,1);
-                                p = deps(1); % parameter
-                                p_idx = find(paramVars == p,1);
-                            elseif any(deps(2) == paramVars) && ...
-                                    ~any(deps(1) == paramVars) && ...
-                                    is(recover(deps(1)),'linear')
-                                v = deps(1);
-                                v_idx = find(internalmodel.used_variables == v,1);
-                                p = deps(2);
-                                p_idx = find(paramVars == p,1);
-                            else % This shouldn't happen! Case is handled above
-                                error('Internal error! Please contact support@embotech.ch')
-                            end
-
-                            % Variable is parameter --> remove it
-                            removeIdx = [removeIdx i];
-
-                            % Does bilinear combo influence cost?
-                            if f(i) ~= 0
-                                qcqpParams.f(end+1) = newAdditiveQcqpParam(v_idx,{[p_idx, 1]},1,f(i));
-                            end
-
-                            if any(H(:,i)) || any(H(i,:))
-                                error('Parameters can only be used affinely.')
-                            end
-
-                            % Check if parameter is used in Aineq
-                            rows = find(Aineq(:,i));
-                            for row=rows'
-                                qcqpParams.Aineq(end+1) = newAdditiveQcqpParam(sub2ind(size(Aineq),row,v_idx),{[p_idx, 1]},1,Aineq(row,i));
-                            end
-
-                            % Check if parameter is used in Aeq
-                            rows = find(Aeq(:,i));
-                            for row=rows'
-                                qcqpParams.Aeq(end+1) = newAdditiveQcqpParam(sub2ind(size(Aeq),row,v_idx),{[p_idx, 1]},1,Aeq(row,i));
-                            end
-
-                            % Check bounds
-                            if lb(i) ~= -Inf || ub(i) ~= Inf
-                                beep
-                                warning('Y2F:bilinearTermBounds','Bounds on bilinear terms have no effect.')
+                            if numel(varIdx) > 1 % make sure Q is symmetric
+                                qcqpParams.Q(end+1) = newAdditiveQcqpParam(sub2ind(size(Q{k}),varIdx(1),varIdx(end)),paramOrigin,k,0.5*Aineq(row,i));
+                                qcqpParams.Q(end+1) = newAdditiveQcqpParam(sub2ind(size(Q{k}),varIdx(end),varIdx(1)),paramOrigin,k,0.5*Aineq(row,i));
+                            else
+                                qcqpParams.Q(end+1) = newAdditiveQcqpParam(sub2ind(size(Q{k}),varIdx(1),varIdx(1)),paramOrigin,k,Aineq(row,i));
                             end
                         end
                     end
-                elseif sum(internalmodel.monomtable(i,:))==3
-                    % Decide which variable is the parameter
-                    % At the end v1 and v2 are real variables, p is the parameter
-                    temp_idx = find(internalmodel.monomtable(i,:));
-                    if length(temp_idx) == 2 % p*x^2
-                        v1_idx = find(internalmodel.monomtable(i,:) == 2,1); % variable
-                        v1 = internalmodel.used_variables(v1_idx);
-                        v2_idx = v1_idx;
-                        v2 = v1;
-                        p = internalmodel.used_variables(find(internalmodel.monomtable(i,:) == 1,1));
-                        p_idx = find(paramVars == p,1);
-                        if isempty(p_idx) || any(paramVars == v1)
-                            error('One of the non-quadratic terms cannot be interpreted.')
-                        end
-                    elseif length(temp_idx) == 3 % p*x1*x2
-                        temp_idx = find(internalmodel.monomtable(i,:) == 1);
-                        temp_vars = internalmodel.used_variables(temp_idx); % variables & parameter
-                        if ismember(temp_vars(1), paramVars) && ~any(ismember(temp_vars(2:3), paramVars))
-                            v1_idx = temp_idx(2); % variables
-                            v1 = temp_vars(2);
-                            v2_idx = temp_idx(3);
-                            v2 = temp_vars(3);
-                            p = temp_vars(1);
-                            p_idx = find(paramVars == p,1);
-                        elseif ismember(temp_vars(2), paramVars) && ~any(ismember(temp_vars([1 3]), paramVars))
-                            v1_idx = temp_idx(1); % variables
-                            v1 = temp_vars(1);
-                            v2_idx = temp_idx(3);
-                            v2 = temp_vars(3);
-                            p = temp_vars(2);
-                            p_idx = find(paramVars == p,1);
-                        elseif ismember(temp_vars(3), paramVars) && ~any(ismember(temp_vars(1:2), paramVars))
-                            v1_idx = temp_idx(1); % variables
-                            v1 = temp_vars(1);
-                            v2_idx = temp_idx(2);
-                            v2 = temp_vars(2);
-                            p = temp_vars(3);
-                            p_idx = find(paramVars == p,1);
-                        else
-                            error('One of the non-quadratic terms cannot be interpreted.')
-                        end
-                    else
-                        error('One of the non-quadratic terms cannot be interpreted.')
+                else % non-parametric term
+                    if sum(internalmodel.monomtable(i,varIdx)) ~= 2 % this should not happen (variable is linear <-- should be caught before)
+                        error('Internal error. Please contact support@embotech.ch.')
                     end
 
-                    % Variable is parameter --> remove it
+                    % We have a quadratic term!
+
+                    % Remove this pseudo-variable
                     removeIdx = [removeIdx i];
 
-                    if f(i) ~= 0 % pseudo-variable affects cost --> param in H
-                        qcqpParams.H(end+1) = newAdditiveQcqpParam(sub2ind(size(H),v1_idx,v2_idx),{[p_idx, 1]},1,f(i));
-                        qcqpParams.H(end+1) = newAdditiveQcqpParam(sub2ind(size(H),v2_idx,v1_idx),{[p_idx, 1]},1,f(i));
+                    % If it appears in the linear cost --> move it
+                    if f(i) ~= 0
+                        H(varIdx(1),varIdx(end)) = H(varIdx(1),varIdx(end)) + f(i);
+                        H(varIdx(end),varIdx(1)) = H(varIdx(end),varIdx(1)) + f(i);
                     end
 
                     % Cannot appear in quadratic cost
@@ -797,28 +721,22 @@ end
 
                     % Cannot appear in equalities
                     if nnz(Aeq(:,i)) > 0
-                        error('Nonlinear equalities are not allowed.')
+                        error('Quadratic equalities are not supported.')
                     end
 
                     % Check bounds
                     if lb(i) ~= -Inf || ub(i) ~= Inf
                         beep
-                        warning('Y2F:nonlinearTermBounds','Bounds on nonlinear terms have no effect.')
+                        warning('Y2F:quadraticTermBounds','Bounds on quadratic terms have no effect.')
                     end
 
-                    % Check inequalities
+                    % Check if variable is used in Aineq --> put in quad. ineq.
                     rows = find(Aineq(:,i));
                     for row=rows'
                         [k,quadIneq,Q,l,r] = findOrCreateQuadraticInequality(row,quadIneq,Q,l,r);
-                        if v1_idx ~= v2_idx % make sure Q is symmetric
-                            qcqpParams.Q(end+1) = newAdditiveQcqpParam(sub2ind(size(Q{k}),v1_idx,v2_idx),{[p_idx, 1]},k,0.5*Aineq(row,i));
-                            qcqpParams.Q(end+1) = newAdditiveQcqpParam(sub2ind(size(Q{k}),v2_idx,v1_idx),{[p_idx, 1]},k,0.5*Aineq(row,i));
-                        else
-                            qcqpParams.Q(end+1) = newAdditiveQcqpParam(sub2ind(size(Q{k}),v1_idx,v1_idx),{[p_idx, 1]},k,Aineq(row,i));
-                        end
+                        Q{k}(varIdx(1),varIdx(end)) = Q{k}(varIdx(1),varIdx(end)) + 0.5*Aineq(row,i);
+                        Q{k}(varIdx(end),varIdx(1)) = Q{k}(varIdx(end),varIdx(1)) + 0.5*Aineq(row,i);
                     end
-                else
-                    error('One of the non-quadratic terms cannot be interpreted.')
                 end    
             end
         end
