@@ -324,9 +324,10 @@ for k=1:self.numSolvers
         % Go through all parameters (fields contains p_1, p_2, ...)
         for i=1:numel(fields)
             paramMap = self.forcesParamMap{k}.(fields{i});
+            paramIdx = [paramMap.idx];
             % Go through all elements of this parameter
             for j=1:numel(problem.(fields{i}))
-                ps = find(paramMap(1,:) == j); % all relevant param map entries
+                ps = find(paramIdx == j); % all relevant param map entries
                 if isempty(ps)
                     % Load standard value
                     fprintf(cFileID, '\tparams_%u.%s[%u] = %.15g;\n',k,fields{i},j-1,problem.(fields{i})(j));
@@ -336,24 +337,21 @@ for k=1:self.numSolvers
                         
                         % Add additive parameters
                         for p=ps
-                            factor = paramMap(2,p);
-                            valueMatrix = paramMap(3,p);
-                            valueIndex = paramMap(4,p);
-                            fprintf(cFileID, ' + %.15g * params->%s[%u]',factor,self.paramNames{valueMatrix},valueIndex-1);
+                            factor = paramMap(p).factor;
+                            fprintf(cFileID, ' + %.15g', factor);
+                            printPolynomialParam(cFileID, self.paramNames, paramMap(p).origin);
                         end
                         fprintf(cFileID, ';\n');
                     else
                         % print first additive param
-                        factor = paramMap(2,ps(1));
-                        valueMatrix = paramMap(3,ps(1));
-                        valueIndex = paramMap(4,ps(1));
-                        fprintf(cFileID, '\tparams_%u.%s[%u] = %.15g * params->%s[%u]',k,fields{i},j-1,factor,self.paramNames{valueMatrix},valueIndex-1);
+                        factor = paramMap(ps(1)).factor;
+                        fprintf(cFileID, '\tparams_%u.%s[%u] = %.15g', k,fields{i},j-1, factor);
+                        printPolynomialParam(cFileID, self.paramNames, paramMap(ps(1)).origin);
                         % Add other additive parameters
                         for p=ps(2:end)
-                            factor = paramMap(2,p);
-                            valueMatrix = paramMap(3,p);
-                            valueIndex = paramMap(4,p);
-                            fprintf(cFileID, ' + %.15g * params->%s[%u]',factor,self.paramNames{valueMatrix},valueIndex-1);
+                            factor = paramMap(p).factor;
+                            fprintf(cFileID, ' + %.15g', factor);
+                            printPolynomialParam(cFileID, self.paramNames, paramMap(p).origin);
                         end
                         fprintf(cFileID, ';\n');
                     end
@@ -524,3 +522,21 @@ success = 1;
 
 end
 
+function printPolynomialParam(file, paramNames, originParam)
+% Helper function to print a polynomial parametric expression
+for k=1:numel(originParam)
+    if abs(rem(originParam(k).exp, 1)) > 1e-12
+        error('Only integers are allowed in exponent of parameters.')
+    end
+    % Determine operation (multiplication for positive exponent, division otherwise)
+    if originParam.exp > 0
+        op = '*';
+    else
+        op = '/';
+    end
+    
+    for j=1:round(abs(originParam(k).exp))
+        fprintf(file, ' %s params->%s[%u]',op, paramNames{originParam(k).mat_id},originParam(k).mat_idx-1);
+    end
+end
+end

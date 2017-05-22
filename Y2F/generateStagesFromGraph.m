@@ -7,17 +7,18 @@ function [stages, params, standardParamValues, forcesParamMap] = generateStagesF
 %                                   2nd row: index of element inside matrix
 %       
 %   Output:
-%       stages:                 FORCES stages
-%       params:                 FORCES parameters
-%       standardParamValues:    "standard" values for FORCES parameters. 
-%                               Not every element of the matrix has be 
-%                               covered by a QCQP parameter. Param values
-%                               get added to this value.
-%       forcesParamMap:         Map that maps FORCES parameters to parameter value matrices
-%       	.(param_name)(1,.):   index of element that's affected
-%           .(param_name)(2,.):   factor by which value gets multiplied
-%           .(param_name)(3,.):   matrix that contains value
-%           .(param_name)(4,.):   points to element inside value matrix
+%       stages:                     FORCES stages
+%       params:                     FORCES parameters
+%       standardParamValues:        "standard" values for FORCES parameters. 
+%                                   Not every element of the matrix has be 
+%                                   covered by a QCQP parameter. Param values
+%                                   get added to this value.
+%       forcesParamMap:             Map that maps FORCES parameters to parameter value matrices
+%       	.(param_name).idx:                index of element that's affected
+%           .(param_name).factor:             factor by which value gets multiplied
+%           .(param_name).origin(i).exp:      exponent of parameter value
+%           .(param_name).origin(i).mat_id:   matrix that contains parameter value
+%           .(param_name).origin(i).mat_idx:  points to element inside value matrix
 %
 % This file is part of the y2f project: http://github.com/embotech/y2f, 
 % a project maintained by embotech under the MIT open-source license.
@@ -366,11 +367,15 @@ end
             
             % Make param map (additive parts of parameter, see help of
             % generateStagesFromGraph)
-            forcesParamMap.(param_id) = zeros(4,0);
+            forcesParamMap.(param_id) = struct('idx', {}, 'factor', {}, 'origin',{});
             for j=find(relevant_params)
-                forcesParamMap.(param_id)(:,end+1) = [param_local_idx(j);...
-                                                      qcqpParams(j).factor;...
-                                                      yalmipParamMap(:,qcqpParams(j).maps2origparam)];
+                forcesParamMap.(param_id)(end+1).idx = param_local_idx(j);...
+                forcesParamMap.(param_id)(end).factor = qcqpParams(j).factor;...
+                for orig_param=1:numel(qcqpParams(j).origin)
+                    forcesParamMap.(param_id)(end).origin(orig_param).exp = qcqpParams(j).origin{orig_param}(2);
+                    forcesParamMap.(param_id)(end).origin(orig_param).mat_id = yalmipParamMap(1,qcqpParams(j).origin{orig_param}(1));
+                    forcesParamMap.(param_id)(end).origin(orig_param).mat_idx = yalmipParamMap(2,qcqpParams(j).origin{orig_param}(1));
+                end 
             end
             
             param = params(p);
@@ -399,11 +404,15 @@ end
             
             % Make param map (additive parts of parameter, see help of
             % generateStagesFromGraph)
-            forcesParamMap.(param_id) = zeros(4,0);
+            forcesParamMap.(param_id) = struct('idx', {}, 'factor', {}, 'origin',{});
             for j=find(relevant_params)
-                forcesParamMap.(param_id)(:,end+1) = [param_local_idx(j);...
-                                                      qcqpParams(j).factor;...
-                                                      yalmipParamMap(:,qcqpParams(j).maps2origparam)];
+                forcesParamMap.(param_id)(end+1).idx = param_local_idx(j);...
+                forcesParamMap.(param_id)(end).factor = qcqpParams(j).factor;...
+                for orig_param=1:numel(qcqpParams(j).origin)
+                    forcesParamMap.(param_id)(end).origin(orig_param).exp = qcqpParams(j).origin{orig_param}(2);
+                    forcesParamMap.(param_id)(end).origin(orig_param).mat_id = yalmipParamMap(1,qcqpParams(j).origin{orig_param}(1));
+                    forcesParamMap.(param_id)(end).origin(orig_param).mat_idx = yalmipParamMap(2,qcqpParams(j).origin{orig_param}(1));
+                end 
             end
 
             param = params(p);
@@ -451,11 +460,15 @@ end
             
             % Make param map (additive parts of parameter, see help of
             % generateStagesFromGraph)
-            forcesParamMap.(param_id) = zeros(4,0);
+            forcesParamMap.(param_id) = struct('idx', {}, 'factor', {},  'origin',{});
             for j=find(relevant_params)
-                forcesParamMap.(param_id)(:,end+1) = [param_local_idx(j);...
-                                                      qcqpParams(j).factor;...
-                                                      yalmipParamMap(:,qcqpParams(j).maps2origparam)];
+                forcesParamMap.(param_id)(end+1).idx = param_local_idx(j);...
+                forcesParamMap.(param_id)(end).factor = qcqpParams(j).factor;...
+                for orig_param=1:numel(qcqpParams(j).origin)
+                    forcesParamMap.(param_id)(end).origin(orig_param).exp = qcqpParams(j).origin{orig_param}(2);
+                    forcesParamMap.(param_id)(end).origin(orig_param).mat_id = yalmipParamMap(1,qcqpParams(j).origin{orig_param}(1));
+                    forcesParamMap.(param_id)(end).origin(orig_param).mat_idx = yalmipParamMap(2,qcqpParams(j).origin{orig_param}(1));
+                end 
             end
             
             param = params(p);
@@ -463,30 +476,6 @@ end
         end
     
     end
-
-%     function createDiagonalCostParameter(stage, relevantParams, element_idx)
-%     % Helper function to create a FORCES parameters for a diagonal cost
-%         params(p) = newParam(sprintf('p_%u',p), stage, 'cost.H', 'diag');
-%         standardParamValues.(sprintf('p_%u',p)) = stages(stage).cost.H(logical(eye(length(element_idx)))); % only use diagonal
-%         stages(stage).cost.H = [];
-% 
-%         forcesParamMap.(sprintf('p_%u',p)) = zeros(4,0);
-%         paramSize = size(standardParamValues.(sprintf('p_%u',p)));
-%         for j=relevantParams
-%             for element=1:length(element_idx)
-%                 value_idx = find(sub2ind(size(H),element_idx(element),element_idx(element)) == ...
-%                         qcqpParams.H(j).maps2index);
-%                 if length(value_idx) == 1
-%                     forcesParamMap.(sprintf('p_%u',p))(:,end+1) = [element;...
-%                                                                    qcqpParams.H(j).factor;...
-%                                                                    yalmipParamMap(:,qcqpParams.H(j).maps2origparam)];
-%                 elseif length(value_idx) > 1
-%                     error('Mistake in the new stages formulation')
-%                 end
-%             end
-%         end
-%         p = p + 1;
-%     end
             
 fprintf('\nTime spent in createParameter: %5.1f seconds\n', createParamTime);
 

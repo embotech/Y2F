@@ -457,28 +457,28 @@ end
     % Helper function that builds QCQp parameter list and recognises
     % quadratic inequalities
     
-        % Build empty additive QCQp param struct
-        qcqpParams.H = struct('maps2index',{},'maps2origparam',{},...
+        % Build empty additive QCQP param struct
+        qcqpParams.H = struct('maps2index',{},'origin',{},...
             'maps2mat',{},'factor',{});
-        qcqpParams.f = struct('maps2index',{},'maps2origparam',{},...
+        qcqpParams.f = struct('maps2index',{},'origin',{},...
             'maps2mat',{},'factor',{});
-        qcqpParams.Aineq = struct('maps2index',{},'maps2origparam',{},...
+        qcqpParams.Aineq = struct('maps2index',{},'origin',{},...
             'maps2mat',{},'factor',{});
-        qcqpParams.bineq = struct('maps2index',{},'maps2origparam',{},...
+        qcqpParams.bineq = struct('maps2index',{},'origin',{},...
             'maps2mat',{},'factor',{});
-        qcqpParams.Aeq = struct('maps2index',{},'maps2origparam',{},...
+        qcqpParams.Aeq = struct('maps2index',{},'origin',{},...
             'maps2mat',{},'factor',{});
-        qcqpParams.beq = struct('maps2index',{},'maps2origparam',{},...
+        qcqpParams.beq = struct('maps2index',{},'origin',{},...
             'maps2mat',{},'factor',{});
-        qcqpParams.l = struct('maps2index',{},'maps2origparam',{},...
+        qcqpParams.l = struct('maps2index',{},'origin',{},...
             'maps2mat',{},'factor',{});
-        qcqpParams.Q = struct('maps2index',{},'maps2origparam',{},...
+        qcqpParams.Q = struct('maps2index',{},'origin',{},...
             'maps2mat',{},'factor',{});
-        qcqpParams.r = struct('maps2index',{},'maps2origparam',{},...
+        qcqpParams.r = struct('maps2index',{},'origin',{},...
             'maps2mat',{},'factor',{});
-        qcqpParams.lb = struct('maps2index',{},'maps2origparam',{},...
+        qcqpParams.lb = struct('maps2index',{},'origin',{},...
             'maps2mat',{},'factor',{});
-        qcqpParams.ub = struct('maps2index',{},'maps2origparam',{},...
+        qcqpParams.ub = struct('maps2index',{},'origin',{},...
             'maps2mat',{},'factor',{});
         qcqpParams.bidx = [];
 
@@ -560,14 +560,14 @@ end
                 rows = rows(rows ~= i); % param*param just adds a constant term to cost
                 for row=rows'
                     if ~any(paramVars == internalmodel.used_variables(row)) % param1*param2 just adds a constant term to cost
-                        qcqpParams.f(end+1) = newAdditiveQcqpParam(row,p_idx,1,0.5*H(row,i));
+                        qcqpParams.f(end+1) = newAdditiveQcqpParam(row,{[p_idx, 1]},1,0.5*H(row,i));
                     end
                 end
                 cols = find(H(i,:));
                 cols = cols(cols ~= i); % param*param just adds a constant term to cost
                 for col=cols
                     if ~any(paramVars == internalmodel.used_variables(col)) % param1*param2 just adds a constant term to cost
-                        qcqpParams.f(end+1) = newAdditiveQcqpParam(col,p_idx,1,0.5*H(i,col));
+                        qcqpParams.f(end+1) = newAdditiveQcqpParam(col,{[p_idx, 1]},1,0.5*H(i,col));
                     end
                 end
 
@@ -576,13 +576,13 @@ end
                 % Check if parameter is used in Aineq --> add to bineq
                 rows = find(Aineq(:,i));
                 for row=rows'
-                    qcqpParams.bineq(end+1) = newAdditiveQcqpParam(row,p_idx,1,-Aineq(row,i));
+                    qcqpParams.bineq(end+1) = newAdditiveQcqpParam(row,{[p_idx, 1]},1,-Aineq(row,i));
                 end
 
                 % Check if parameter is used in Aeq --> add to beq
                 rows = find(Aeq(:,i));
                 for row=rows'
-                    qcqpParams.beq(end+1) = newAdditiveQcqpParam(row,p_idx,1,-Aeq(row,i));
+                    qcqpParams.beq(end+1) = newAdditiveQcqpParam(row,{[p_idx, 1]},1,-Aeq(row,i));
                 end
 
                 % Check bounds
@@ -601,7 +601,7 @@ end
                 end
 
                 % Is variable bilinear/quadratic?
-                if sum(internalmodel.monomtable(i,:)) == 2
+                if sum(internalmodel.monomtable(i,:)) == 2 && nnz(internalmodel.monomtable(i,:)) >= 1 && nnz(internalmodel.monomtable(i,:)) <= 2
                     % Is variable the square of another variable?
                     if any(internalmodel.monomtable(i,:)==2)
                         v_idx = find(internalmodel.monomtable(i,:)==2,1);
@@ -711,7 +711,7 @@ end
 
                             % Does bilinear combo influence cost?
                             if f(i) ~= 0
-                                qcqpParams.f(end+1) = newAdditiveQcqpParam(v_idx,p_idx,1,f(i));
+                                qcqpParams.f(end+1) = newAdditiveQcqpParam(v_idx,{[p_idx, 1]},1,f(i));
                             end
 
                             if any(H(:,i)) || any(H(i,:))
@@ -721,13 +721,13 @@ end
                             % Check if parameter is used in Aineq
                             rows = find(Aineq(:,i));
                             for row=rows'
-                                qcqpParams.Aineq(end+1) = newAdditiveQcqpParam(sub2ind(size(Aineq),row,v_idx),p_idx,1,Aineq(row,i));
+                                qcqpParams.Aineq(end+1) = newAdditiveQcqpParam(sub2ind(size(Aineq),row,v_idx),{[p_idx, 1]},1,Aineq(row,i));
                             end
 
                             % Check if parameter is used in Aeq
                             rows = find(Aeq(:,i));
                             for row=rows'
-                                qcqpParams.Aeq(end+1) = newAdditiveQcqpParam(sub2ind(size(Aeq),row,v_idx),p_idx,1,Aeq(row,i));
+                                qcqpParams.Aeq(end+1) = newAdditiveQcqpParam(sub2ind(size(Aeq),row,v_idx),{[p_idx, 1]},1,Aeq(row,i));
                             end
 
                             % Check bounds
@@ -786,8 +786,8 @@ end
                     removeIdx = [removeIdx i];
 
                     if f(i) ~= 0 % pseudo-variable affects cost --> param in H
-                        qcqpParams.H(end+1) = newAdditiveQcqpParam(sub2ind(size(H),v1_idx,v2_idx),p_idx,1,f(i));
-                        qcqpParams.H(end+1) = newAdditiveQcqpParam(sub2ind(size(H),v2_idx,v1_idx),p_idx,1,f(i));
+                        qcqpParams.H(end+1) = newAdditiveQcqpParam(sub2ind(size(H),v1_idx,v2_idx),{[p_idx, 1]},1,f(i));
+                        qcqpParams.H(end+1) = newAdditiveQcqpParam(sub2ind(size(H),v2_idx,v1_idx),{[p_idx, 1]},1,f(i));
                     end
 
                     % Cannot appear in quadratic cost
@@ -811,10 +811,10 @@ end
                     for row=rows'
                         [k,quadIneq,Q,l,r] = findOrCreateQuadraticInequality(row,quadIneq,Q,l,r);
                         if v1_idx ~= v2_idx % make sure Q is symmetric
-                            qcqpParams.Q(end+1) = newAdditiveQcqpParam(sub2ind(size(Q{k}),v1_idx,v2_idx),p_idx,k,0.5*Aineq(row,i));
-                            qcqpParams.Q(end+1) = newAdditiveQcqpParam(sub2ind(size(Q{k}),v2_idx,v1_idx),p_idx,k,0.5*Aineq(row,i));
+                            qcqpParams.Q(end+1) = newAdditiveQcqpParam(sub2ind(size(Q{k}),v1_idx,v2_idx),{[p_idx, 1]},k,0.5*Aineq(row,i));
+                            qcqpParams.Q(end+1) = newAdditiveQcqpParam(sub2ind(size(Q{k}),v2_idx,v1_idx),{[p_idx, 1]},k,0.5*Aineq(row,i));
                         else
-                            qcqpParams.Q(end+1) = newAdditiveQcqpParam(sub2ind(size(Q{k}),v1_idx,v1_idx),p_idx,k,Aineq(row,i));
+                            qcqpParams.Q(end+1) = newAdditiveQcqpParam(sub2ind(size(Q{k}),v1_idx,v1_idx),{[p_idx, 1]},k,Aineq(row,i));
                         end
                     end
                 else
@@ -893,7 +893,7 @@ end
             % Convert bineq params
             relevantParams = findRelevantParams(row, 1, size(bineq), qcqpParams.bineq);
             for j=fliplr(relevantParams) % sort descending
-                qcqpParams.r(end+1) = newAdditiveQcqpParam(k,qcqpParams.bineq(j).maps2origparam, ...
+                qcqpParams.r(end+1) = newAdditiveQcqpParam(k,qcqpParams.bineq(j).origin, ...
                                         1, qcqpParams.bineq(j).factor);
                 qcqpParams.bineq(j) = [];
             end
@@ -902,7 +902,7 @@ end
             relevantParams = findRelevantParams(row, 1:size(Aineq,2), size(Aineq), qcqpParams.Aineq);
             for j=fliplr(relevantParams) % sort descending
                 [~,col] = ind2sub(size(Aineq), qcqpParams.Aineq(j).maps2index);
-                qcqpParams.l(end+1) = newAdditiveQcqpParam(col,qcqpParams.Aineq(j).maps2origparam, ...
+                qcqpParams.l(end+1) = newAdditiveQcqpParam(col,qcqpParams.Aineq(j).origin, ...
                                         k, qcqpParams.Aineq(j).factor);
                 qcqpParams.Aineq(j) = [];
             end
@@ -940,7 +940,7 @@ end
                         % Convert bineq params
                         relevantParams = findRelevantParams(i, 1, size(bineq), qcqpParams.bineq);
                         for j=fliplr(relevantParams) % sort descending
-                            qcqpParams.ub(end+1) = newAdditiveQcqpParam(vars,qcqpParams.bineq(j).maps2origparam, ...
+                            qcqpParams.ub(end+1) = newAdditiveQcqpParam(vars,qcqpParams.bineq(j).origin, ...
                                                     1, qcqpParams.bineq(j).factor/Aineq(i,vars));
                             qcqpParams.bineq(j) = [];
                         end
@@ -952,7 +952,7 @@ end
                         % Convert bineq params
                         relevantParams = findRelevantParams(i, 1, size(bineq), qcqpParams.bineq);
                         for j=fliplr(relevantParams) % sort descending
-                            qcqpParams.lb(end+1) = newAdditiveQcqpParam(vars,qcqpParams.bineq(j).maps2origparam, ...
+                            qcqpParams.lb(end+1) = newAdditiveQcqpParam(vars,qcqpParams.bineq(j).origin, ...
                                                     1, qcqpParams.bineq(j).factor/Aineq(i,vars));
                             qcqpParams.bineq(j) = [];
                         end
