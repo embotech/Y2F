@@ -529,7 +529,7 @@ for k=1:numel(originParam)
         error('Only integers are allowed in exponent of parameters.')
     end
     % Determine operation (multiplication for positive exponent, division otherwise)
-    if originParam.exp > 0
+    if originParam(k).exp > 0
         op = '*';
     else
         op = '/';
