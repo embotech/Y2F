@@ -62,7 +62,7 @@ end
 
 % Add S-function block if it doesn't exist already
 blocks = find_system(library);
-if ~any(cell2mat(strfind(blocks,[library '/' block])))
+if ~any(strcmp(blocks,[library '/' block]))
     add_block('built-in/S-Function', [library '/' block]);
     
     % Create mask
