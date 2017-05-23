@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.9
+
+- Added `y2f_version` function that returns currently installed version of Y2F
+
 ## 0.1.8
 
 - Fixed compilation for Visual Studio 2015 users
