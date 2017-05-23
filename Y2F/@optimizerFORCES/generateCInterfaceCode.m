@@ -50,7 +50,8 @@ cFileID = fopen([solverName '/interface/' solverName '.c'],'w');
 fprintf(hFileID, '/*\nHeader file containing definitions for C interface of %s,\n', solverName);
 fprintf(hFileID, ' a fast costumized optimization solver.\n*/\n\n');
 
-fprintf(hFileID, '#include <stdio.h>\n\n');
+fprintf(hFileID, '#include <stdio.h>\n');
+fprintf(hFileID, '#include <math.h>\n\n');
 
 fprintf(hFileID, '#ifndef __%s_H__\n',solverName);
 fprintf(hFileID, '#define __%s_H__\n\n',solverName);
@@ -525,18 +526,13 @@ end
 function printPolynomialParam(file, paramNames, originParam)
 % Helper function to print a polynomial parametric expression
 for k=1:numel(originParam)
-    if abs(rem(originParam(k).exp, 1)) > 1e-12
-        error('Only integers are allowed in exponent of parameters.')
-    end
     % Determine operation (multiplication for positive exponent, division otherwise)
-    if originParam(k).exp > 0
-        op = '*';
+    if originParam(k).exp == 1
+        fprintf(file, ' * params->%s[%u]', paramNames{originParam(k).mat_id},originParam(k).mat_idx-1);
+    elseif originParam(k).exp == -1
+        fprintf(file, ' / params->%s[%u]', paramNames{originParam(k).mat_id},originParam(k).mat_idx-1);
     else
-        op = '/';
-    end
-    
-    for j=1:round(abs(originParam(k).exp))
-        fprintf(file, ' %s params->%s[%u]',op, paramNames{originParam(k).mat_id},originParam(k).mat_idx-1);
+        fprintf(file, ' * pow(params->%s[%u], %.15g)', paramNames{originParam(k).mat_id},originParam(k).mat_idx-1, originParam(k).exp);
     end
 end
 end

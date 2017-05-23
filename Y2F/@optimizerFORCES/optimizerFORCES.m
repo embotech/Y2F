@@ -573,7 +573,7 @@ end
                     % newAdditiveQcqpParam for better explanation)
                     paramOrigin = cell(1,0);
                     for id=paramIdx
-                        paramOrigin(end+1) = {[find(paramVars == internalmodel.used_variables(id),1), internalmodel.monomtable(i,id)]};
+                        paramOrigin(end+1) = {full([find(paramVars == internalmodel.used_variables(id),1), internalmodel.monomtable(i,id)])};
                     end
                     
                     if numel(varIdx) == 0 % constant (parametric) term 
