@@ -203,6 +203,7 @@ for i=1:G.n
         % compute sparsity
         local_Aineq_temp = Aineq_temp(ineq_idx,idx);
         nonzeros = find(local_Aineq_temp);
+        nonzeros = nonzeros(:)'; % make sure nonzeros is a row vector
         if length(nonzeros)/numel(Aineq_temp) <= SPARSITY_THRESHOLD % is Aineq sparse?
             % compute location of nonzeros in big matrix
             [i1, i2] = ind2sub(size(local_Aineq_temp),nonzeros);
