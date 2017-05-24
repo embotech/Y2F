@@ -557,7 +557,7 @@ end
                         paramIdx(end+1) = id;
                     else % decision variable
                         if internalmodel.monomtable(i,id) ~= 1 && internalmodel.monomtable(i,id) ~= 2
-                            error('Only linear and quadratic terms allowed. You have a term of order %i.', internalmodel.monomtable(i,id))
+                            error('Only linear and quadratic terms allowed. You have a term of order %.2f.', full(internalmodel.monomtable(i,id)))
                         end
                         varIdx(end+1) = id;
                     end
@@ -565,7 +565,7 @@ end
                 
                 % Make sure that only linear & quadratic terms make it through
                 if sum(internalmodel.monomtable(i,varIdx)) > 2
-                	error('Only linear and quadratic terms allowed. You have a term of order %i.', sum(internalmodel.monomtable(i,varIdx)))
+                	error('Only linear and quadratic terms allowed. You have a term of order %.2f.', sum(internalmodel.monomtable(i,varIdx)))
                 end
                 
                 if ~isempty(paramIdx) % we have parameters
