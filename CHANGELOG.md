@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.10
+- Fix a compilation bug under Windows when using the new Azure servers
+
 ## 0.1.9
 
 - Added `y2f_version` function that returns currently installed version of Y2F
