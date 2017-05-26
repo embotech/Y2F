@@ -34,6 +34,11 @@ if exist( [cName '.c'], 'file' ) && exist( [simulinkName '.c'], 'file' )
             libs = cell(1,self.numSolvers);
             for i=1:self.numSolvers
                 lib = dir([solverName,filesep,'lib/',self.codeoptions{i}.name,'*.lib']);
+                if length(lib)>1
+                    % fix for new server which produces shared and static
+                    % libraries, so we have more than 1 library found above
+                    lib = dir([solverName,filesep,'lib/',self.codeoptions{i}.name,'_static.lib']);
+                end
                 libs{i} = ['-l' lib.name(1:end-4)];
             end
         end
