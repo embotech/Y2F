@@ -11,7 +11,11 @@ success = 0;
 
 % Get solver name from option
 solverName = self.default_codeoptions.name;
-
+if (isfield(self.default_codeoptions,'certification') && self.default_codeoptions.certification == 1)
+   constant_solverName = upper(solverName); 
+else
+   constant_solverName = solverName;     
+end
 % Check if FORCES solver has been generated
 if ~isdir(solverName)
     error('Solver ''%s'' has not been generated!', solverName)
@@ -32,13 +36,13 @@ fprintf(fileID, '#include <stdio.h>\n\n');
 
 % Copy functions stolen from FORCES
 fprintf(fileID, '/* copy functions */\n');
-fprintf(fileID, 'void copyCArrayToM(double *src, double *dest, int dim) {\n');
-fprintf(fileID, '\twhile (dim--) {\n');
+fprintf(fileID, 'static void copyCArrayToM(double *src, double *dest, solver_int32_default dim) \n{\n');
+fprintf(fileID, '\twhile (dim--) \n\t{\n');
 fprintf(fileID, '\t\t*dest++ = (double)*src++;\n');
 fprintf(fileID, '\t}\n');
 fprintf(fileID, '}\n');
-fprintf(fileID, 'void copyMArrayToC(double *src, double *dest, int dim) {\n');
-fprintf(fileID, '\twhile (dim--) {\n');
+fprintf(fileID, 'static void copyMArrayToC(double *src, double *dest, solver_int32_default dim) \n{\n');
+fprintf(fileID, '\twhile (dim--) \n\t{\n');
 fprintf(fileID, '\t\t*dest++ = (double) (*src++) ;\n');
 fprintf(fileID, '\t}\n');
 fprintf(fileID, '}\n\n');
@@ -51,7 +55,7 @@ fprintf(fileID, '%s_info info;\n\n',solverName);
 
 % Start of MEX function
 fprintf(fileID, '/* THE mex-function */\n');
-fprintf(fileID, 'void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {\n');
+fprintf(fileID, 'void mexFunction( solver_int32_default nlhs, mxArray *plhs[], solver_int32_default nrhs, const mxArray *prhs[] ) \n{\n');
 fprintf(fileID, '\t/* file pointer for printing */\n');
 fprintf(fileID, '\tFILE *fp = NULL;\n\n');
     
@@ -59,11 +63,11 @@ fprintf(fileID, '\t/* define variables */\n');
 fprintf(fileID, '\tmxArray *par;\n\n');
 fprintf(fileID, '\tconst mxArray *param_values = prhs[0];\n');
 fprintf(fileID, '\tmxArray *outvar;\n');
-fprintf(fileID, '\tint i;\n');
+fprintf(fileID, '\tsolver_int32_default i;\n');
 if self.numSolvers == 1
-    fprintf(fileID, '\tint exitflag;\n');
+    fprintf(fileID, '\tsolver_int32_default exitflag;\n');
 else
-    fprintf(fileID, '\tint *exitflag;\n');
+    fprintf(fileID, '\tsolver_int32_default *exitflag;\n');
 end
 fprintf(fileID, '\tconst char *fname;\n\n');
 
@@ -76,22 +80,22 @@ end
 
 % Check number of in- and outputs
 fprintf(fileID, '\t/* Check for proper number of arguments */\n');
-fprintf(fileID, '\tif (nrhs != 1) {\n');
+fprintf(fileID, '\tif (nrhs != 1) \n\t{\n');
 fprintf(fileID, '\t\tmexErrMsgTxt("This function requires exactly 1 input: parameter value cell array.");\n');
 fprintf(fileID, '\t}\n');
-fprintf(fileID, '\tif (nlhs > 3) {\n');
+fprintf(fileID, '\tif (nlhs > 3) \n\t{\n');
 fprintf(fileID, '\t\tmexErrMsgTxt("This function returns at most 3 outputs.");\n');
 fprintf(fileID, '\t}\n');
 
 % Check type of input
 fprintf(fileID, '\t/* Check whether params is actually a cell array */\n');
-fprintf(fileID, '\tif( !mxIsCell(param_values) ) {\n');
+fprintf(fileID, '\tif( !mxIsCell(param_values) ) \n\t{\n');
 fprintf(fileID, '\t\tmexErrMsgTxt("%s requires a cell array as input.");\n',solverName);
 fprintf(fileID, '\t}\n\n');
 
 % Check length of input
 fprintf(fileID, '\t/* Check whether params has the right number of elements */\n');
-fprintf(fileID, '\tif( mxGetNumberOfElements(param_values) != %u ) {\n',self.numParams);
+fprintf(fileID, '\tif( mxGetNumberOfElements(param_values) != %u ) \n\t{\n',self.numParams);
 fprintf(fileID, '\t\tmexErrMsgTxt("Input must have %u elements.");\n',self.numParams);
 fprintf(fileID, '\t}\n\n');
 
@@ -102,17 +106,17 @@ for i=1:self.numParams
     fprintf(fileID, '\tpar = mxGetCell(param_values,%u);\n',i-1);
     
     % Cell element not found
-    fprintf(fileID, '\tif( par == NULL ) {\n');
+    fprintf(fileID, '\tif( par == NULL ) \n\t{\n');
     fprintf(fileID, '\t\tmexErrMsgTxt("Parameter #%u not found");\n',i);
     fprintf(fileID, '\t}\n');
     
     % Parameter value is not double
-    fprintf(fileID, '\tif( !mxIsDouble(par) ) {\n');
+    fprintf(fileID, '\tif( !mxIsDouble(par) ) \n\t{\n');
     fprintf(fileID, '\t\tmexErrMsgTxt("Parameter #%u must be a double.");\n',i);
     fprintf(fileID, '\t}\n');
     
     % Check parameter value size
-    fprintf(fileID, '\tif( mxGetM(par) != %u || mxGetN(par) != %u ) {\n',self.paramSizes(i,1),self.paramSizes(i,2));
+    fprintf(fileID, '\tif( mxGetM(par) != %u || mxGetN(par) != %u ) \n\t{\n',self.paramSizes(i,1),self.paramSizes(i,2));
     fprintf(fileID, '\t\tmexErrMsgTxt("Parameter #%u must be of size [%u x %u]");\n',i,self.paramSizes(i,1),self.paramSizes(i,2));
     fprintf(fileID, '\t}\n');
     
@@ -121,11 +125,11 @@ for i=1:self.numParams
 end
     
 % If the user wanted output, we need to store it
-fprintf(fileID, '\t#if %s_SET_PRINTLEVEL > 0\n',solverName);
+fprintf(fileID, '\t#if %s_SET_PRINTLEVEL > 0\n',constant_solverName);
 fprintf(fileID, '\t\t/* Prepare file for printfs */\n');
 fprintf(fileID, '\t\t/*fp = freopen("stdout_temp","w+",stdout);*/\n');
 fprintf(fileID, '\t\tfp = fopen("stdout_temp","w+");\n');
-fprintf(fileID, '\t\tif( fp == NULL ) {\n');
+fprintf(fileID, '\t\tif( fp == NULL ) \n\t\t{\n');
 fprintf(fileID, '\t\t\tmexErrMsgTxt("freopen of stdout did not work.");\n');
 fprintf(fileID, '\t\t}\n');
 fprintf(fileID, '\t\trewind(fp);\n');
@@ -135,10 +139,10 @@ fprintf(fileID, '\t/* call solver */\n');
 fprintf(fileID, '\texitflag = %s_solve(&params, &output, &info, fp );\n\n',solverName);
 
 % Print output in console
-fprintf(fileID, '\t#if %s_SET_PRINTLEVEL > 0\n',solverName);
+fprintf(fileID, '\t#if %s_SET_PRINTLEVEL > 0\n',constant_solverName);
 fprintf(fileID, '\t\t/* Read contents of printfs printed to file */\n');
 fprintf(fileID, '\t\trewind(fp);\n');
-fprintf(fileID, '\t\twhile( (i = fgetc(fp)) != EOF ) {\n');
+fprintf(fileID, '\t\twhile( (i = fgetc(fp)) != EOF ) \n\t\t{\n');
 fprintf(fileID, '\t\t\tmexPrintf("%%c",i);\n');
 fprintf(fileID, '\t\t}\n');
 fprintf(fileID, '\t\tfclose(fp);\n');
@@ -164,7 +168,7 @@ end
 % add other output arguments (exitflags and info)
 if self.numSolvers > 1
     fprintf(fileID, '\t/* copy exitflags */\n');
-    fprintf(fileID, '\tif( nlhs > 1 ) {\n');
+    fprintf(fileID, '\tif( nlhs > 1 ) \n\t{\n');
     fprintf(fileID, '\t\tplhs[1] = mxCreateDoubleMatrix(1, %u, mxREAL);\n',self.numSolvers);
     for i=1:self.numSolvers
         fprintf(fileID, '\t\t*(mxGetPr(plhs[1])+%u) = (double)exitflag[%u];\n',i-1,i-1);
@@ -172,7 +176,7 @@ if self.numSolvers > 1
     fprintf(fileID, '\t}\n\n');
 
     fprintf(fileID, '\t/* copy info structs */\n');
-    fprintf(fileID, '\tif( nlhs > 2 ) {\n');
+    fprintf(fileID, '\tif( nlhs > 2 ) \n\t{\n');
     if isfield(self.default_codeoptions, 'solvemethod') && strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % ADMM has different fields
         fprintf(fileID, '\t\tplhs[2] = mxCreateStructMatrix(%u, 1, 9, infofields);\n\n', self.numSolvers);
     else
@@ -274,13 +278,13 @@ if self.numSolvers > 1
     fprintf(fileID, '\t}\n');
 else % only one solver --> no cell arrays necessary
     fprintf(fileID, '\t/* copy exitflag */\n');
-    fprintf(fileID, '\tif( nlhs > 1 ) {\n');
+    fprintf(fileID, '\tif( nlhs > 1 ) \n\t{\n');
     fprintf(fileID, '\t\tplhs[1] = mxCreateDoubleMatrix(1, 1, mxREAL);\n');
     fprintf(fileID, '\t\t*(mxGetPr(plhs[1])) = (double)exitflag;\n');
     fprintf(fileID, '\t}\n\n');
 
     fprintf(fileID, '\t/* copy info struct */\n');
-    fprintf(fileID, '\tif( nlhs > 2 ) {\n');
+    fprintf(fileID, '\tif( nlhs > 2 ) \n\t{\n');
     if isfield(self.default_codeoptions, 'solvemethod') && strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % ADMM has different fields
         fprintf(fileID, '\t\tplhs[2] = mxCreateStructMatrix(1, 1, 9, infofields);\n\n');
     else

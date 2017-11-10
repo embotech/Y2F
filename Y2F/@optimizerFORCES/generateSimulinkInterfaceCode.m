@@ -11,7 +11,11 @@ success = 0;
 
 % Get solver name from option
 solverName = self.default_codeoptions.name;
-
+if (isfield(self.default_codeoptions,'certification') && self.default_codeoptions.certification == 1)
+   constant_solverName = upper(solverName); 
+else
+   constant_solverName = solverName;     
+end
 % Check if FORCES solver has been generated
 if ~isdir(solverName)
     error('Solver ''%s'' has not been generated!', solverName)
@@ -54,8 +58,8 @@ fprintf(fileID, '\n');
 fprintf(fileID, '    DECL_AND_INIT_DIMSINFO(inputDimsInfo);\n');
 fprintf(fileID, '    DECL_AND_INIT_DIMSINFO(outputDimsInfo);\n');
 fprintf(fileID, '    ssSetNumSFcnParams(S, 0);\n');
-fprintf(fileID, '     if (ssGetNumSFcnParams(S) != ssGetSFcnParamsCount(S)) {\n');
-fprintf(fileID, '	 return; /* Parameter mismatch will be reported by Simulink */\n');
+fprintf(fileID, '     if (ssGetNumSFcnParams(S) != ssGetSFcnParamsCount(S)) \n     {\n');
+fprintf(fileID, '          return; /* Parameter mismatch will be reported by Simulink */\n');
 fprintf(fileID, '     }\n');
 fprintf(fileID, '\n');
 fprintf(fileID, '	/* initialize size of continuous and discrete states to zero */\n');
@@ -154,12 +158,12 @@ fprintf(fileID, '    ssSetSampleTime(S, 0, INHERITED_SAMPLE_TIME);\n');
 fprintf(fileID, '    ssSetOffsetTime(S, 0, 0.0);\n');
 fprintf(fileID, '}\n');
 fprintf(fileID, '\n');
-fprintf(fileID, 'static void mdlSetInputPortDataType(SimStruct *S, int port, DTypeId dType)\n');
+fprintf(fileID, 'static void mdlSetInputPortDataType(SimStruct *S, solver_int32_default port, DTypeId dType)\n');
 fprintf(fileID, '{\n');
 fprintf(fileID, '    ssSetInputPortDataType( S, port, dType);\n');
 fprintf(fileID, '}\n');
 fprintf(fileID, '\n');
-fprintf(fileID, 'static void mdlSetOutputPortDataType(SimStruct *S, int port, DTypeId dType)\n');
+fprintf(fileID, 'static void mdlSetOutputPortDataType(SimStruct *S, solver_int32_default port, DTypeId dType)\n');
 fprintf(fileID, '{\n');
 fprintf(fileID, '    ssSetOutputPortDataType(S, port, dType);\n');
 fprintf(fileID, '}\n');
@@ -188,7 +192,7 @@ fprintf(fileID, ' *\n');
 fprintf(fileID, ' */\n');
 fprintf(fileID, 'static void mdlOutputs(SimStruct *S, int_T tid)\n');
 fprintf(fileID, '{\n');
-fprintf(fileID, '	int i, j, k;\n');
+fprintf(fileID, '	solver_int32_default i, j, k;\n');
 fprintf(fileID, '	\n');
 fprintf(fileID, '	/* file pointer for printing */\n');
 fprintf(fileID, '	FILE *fp = NULL;\n');
@@ -221,9 +225,9 @@ fprintf(fileID, '	%s_params params;\n',solverName);
 fprintf(fileID, '	%s_output output;\n',solverName);
 fprintf(fileID, '	%s_info info;	\n',solverName);
 if self.numSolvers == 1
-    fprintf(fileID, '	int exitflag;\n');
+    fprintf(fileID, '	solver_int32_default exitflag;\n');
 else
-    fprintf(fileID, '	int* exitflag;\n');
+    fprintf(fileID, '	solver_int32_default *exitflag;\n');
 end
 
 fprintf(fileID, '\n');
@@ -232,14 +236,18 @@ fprintf(fileID, '\n');
 
 fprintf(fileID, '	/* Copy inputs */\n');
 for i=1:self.numParams
-    fprintf(fileID, '	for( i=0; i<%u; i++){ params.%s[i] = (double) param_%s[i]; }\n',prod(self.paramSizes(i,:)),self.paramNames{i},self.paramNames{i});
+    fprintf(fileID, '	for( i=0; i<%u; i++)\n',prod(self.paramSizes(i,:)));
+    fprintf(fileID, '	{\n');
+    fprintf(fileID, '		params.%s[i] = (double) param_%s[i];\n',self.paramNames{i},self.paramNames{i});
+    fprintf(fileID, '	}\n');
 end
 fprintf(fileID, '\n');
 
-fprintf(fileID, '    #if %s_SET_PRINTLEVEL > 0\n',solverName);
+fprintf(fileID, '    #if %s_SET_PRINTLEVEL > 0\n',constant_solverName);
 fprintf(fileID, '		/* Prepare file for printfs */\n');
 fprintf(fileID, '        fp = fopen("stdout_temp","w+");\n');
-fprintf(fileID, '		if( fp == NULL ) {\n');
+fprintf(fileID, '		if( fp == NULL )\n');
+fprintf(fileID, '		{\n');
 fprintf(fileID, '			mexErrMsgTxt("freopen of stdout did not work.");\n');
 fprintf(fileID, '		}\n');
 fprintf(fileID, '		rewind(fp);\n');
@@ -250,10 +258,11 @@ fprintf(fileID, '	/* Call solver */\n');
 fprintf(fileID, '	exitflag = %s_solve(&params, &output, &info, fp );\n',solverName);
 fprintf(fileID, '\n');
 
-fprintf(fileID, '	#if %s_SET_PRINTLEVEL > 0\n',solverName);
+fprintf(fileID, '	#if %s_SET_PRINTLEVEL > 0\n',constant_solverName);
 fprintf(fileID, '		/* Read contents of printfs printed to file */\n');
 fprintf(fileID, '		rewind(fp);\n');
-fprintf(fileID, '		while( (i = fgetc(fp)) != EOF ) {\n');
+fprintf(fileID, '		while( (i = fgetc(fp)) != EOF )\n');
+fprintf(fileID, '		{\n');
 fprintf(fileID, '			ssPrintf("%%c",i);\n');
 fprintf(fileID, '		}\n');
 fprintf(fileID, '		fclose(fp);\n');
@@ -262,7 +271,10 @@ fprintf(fileID, '\n');
 
 fprintf(fileID, '	/* Copy outputs */\n');
 for i=1:numel(self.outputSize)
-    fprintf(fileID, '	for( i=0; i<%u; i++){ output_%s[i] = (real_T) output.%s[i]; }\n',prod(self.outputSize{i}),self.outputNames{i},self.outputNames{i});
+    fprintf(fileID, '	for( i=0; i<%u; i++)\n',prod(self.outputSize{i}));
+    fprintf(fileID, '	{\n');
+    fprintf(fileID, '		output_%s[i] = (real_T) output.%s[i];\n',self.outputNames{i},self.outputNames{i});
+    fprintf(fileID, '	}\n');
 end
 
 % Info fields are optional
@@ -298,20 +310,25 @@ if (isfield(self.default_codeoptions,'showinfo') && self.default_codeoptions.sho
         % Find worst exitflag (worst-to-best: -100,-10,-2,-1,0,2,1)
         if isempty(self.qcqpParams.bidx) % not branch-and-bound
             fprintf(fileID, '    solver_exitflag[0] = exitflag[0];\n');
-            fprintf(fileID, '    for ( i=1; i<%u; i++) {\n', self.numSolvers);
+            fprintf(fileID, '    for ( i=1; i<%u; i++)\n', self.numSolvers);
+            fprintf(fileID, '    {\n');
             fprintf(fileID, '        if (exitflag[i] < solver_exitflag[0])\n');
             fprintf(fileID, '             solver_exitflag[0] = exitflag[i];\n');
-            fprintf(fileID, '    };\n');
+            fprintf(fileID, '    }\n');
         else
             fprintf(fileID, '    solver_exitflag[0] = exitflag[0];\n');
-            fprintf(fileID, '    int i = 0;\n');
-            fprintf(fileID, '    for ( i=1; i<%u; i++) {\n', self.numSolvers);
-            fprintf(fileID, '        if (exitflag[i] == 2 && solver_exitflag[0] == 1) {\n');
+            fprintf(fileID, '    solver_int32_default i = 0;\n');
+            fprintf(fileID, '    for ( i=1; i<%u; i++)\n', self.numSolvers);
+            fprintf(fileID, '    {\n');
+            fprintf(fileID, '        if (exitflag[i] == 2 && solver_exitflag[0] == 1)\n');
+            fprintf(fileID, '        {\n');
             fprintf(fileID, '             solver_exitflag[0] = 2;\n');
-            fprintf(fileID, '        } else if (exitflag[i] != 2 && exitflag[i] < solver_exitflag[0]) {\n');
+            fprintf(fileID, '        }\n');
+            fprintf(fileID, '        else if (exitflag[i] != 2 && exitflag[i] < solver_exitflag[0])\n');
+            fprintf(fileID, '        {\n');
             fprintf(fileID, '             solver_exitflag[0] = exitflag[i];\n');
-            fprintf(fileID, '        };\n');
-            fprintf(fileID, '    };\n');
+            fprintf(fileID, '        }\n');
+            fprintf(fileID, '    }\n');
         end
     end
 end
