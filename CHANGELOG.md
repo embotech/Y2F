@@ -1,7 +1,10 @@
 # Changelog
 
+## 0.1.11
+- Fixed a compilation bug under Windows
+
 ## 0.1.10
-- Fix a compilation bug under Windows when using the new Azure servers
+- Fixed a compilation bug under Windows when using the new Azure servers
 
 ## 0.1.9
 
