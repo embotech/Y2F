@@ -43,10 +43,20 @@ if exist( [cName '.c'], 'file' ) && exist( [simulinkName '.c'], 'file' )
             end
         end
         
-        % figure our whether we need additional libraries indeed (Intel)
+        % figure out if we are on a 32 or 64 bit system
+        ext = mexext;
+        arch = ext(end-1:end); % mex extension ends with 32 or 64
+        
+        % figure our whether we need additional libraries for Intel
         clientPath = fileparts(which('generateCode'));
         intelLibsDir = [clientPath,filesep,'libs_intel'];
         if( exist( intelLibsDir, 'dir' ) )
+            % If subdirectory for specific architecture exisst, we need to
+            % use that
+            archDir = [intelLibsDir, filesep, 'win', arch];
+            if( exist(archDir, 'dir') )
+                intelLibsDir = archDir;
+            end
             intelLibsDirFlag = ['-L', intelLibsDir];
             addpath(intelLibsDir); savepath;
         else
