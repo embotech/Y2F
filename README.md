@@ -55,7 +55,6 @@ u0 = controller{x0};
 
 ## Limitations
 
-- Matlab version R2017b is currently not supported by Y2F.
 - The Y2F interface only supports convex quadratically constrained programs (QCQPs). FORCES' NLP solver is currently not supported.
 - If you have rate constraints or cost, you need to manually define delta variables (e.g. U+ = U + dU, and then constrain dU). Otherwise, Y2F cannot figure out the multistage structure from your problem, and you might obtain a slow solver.
 
