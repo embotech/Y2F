@@ -128,17 +128,38 @@ if exist( [cName '.c'], 'file' ) && exist( [mexName '.c'], 'file' )
         else
             % it seems that we have been compiling with VS only,
             % so we do not add the Intel libs and use only object files
+            
+            % Find all object files in obj folder
+            objFiles = dir([solverName '/obj/*.obj']); % struct with name and folder in different fields
+            objFiles = arrayfun(@(x) [x.folder filesep x.name], objFiles, 'UniformOutput', false); % cell array with paths
+
+            % Compile MEX interface
             mex([solverName, '/interface/' solverName '.obj'], ...
                 [solverName, '/interface/' solverName '_mex.obj'], ...
-                [solverName '/obj/*.obj'], '-lIPHLPAPI.lib', legacyLibs, ...
+                objFiles{:}, '-lIPHLPAPI.lib', legacyLibs, ...
                 '-output', [outputName(2:end-1),'.',mexext], '-silent');
         end
-        % delete([solverName '/interface/*.obj']);
-    elseif( ismac )
-        mex([solverName '/interface/*.o'], '-output', outputName, '-silent') 
+    elseif( ismac ) % macOS
+        
+        % Find all object files in interface folder
+        objFiles = dir([solverName '/interface/*.o']); % struct with name and folder in different fields
+        objFiles = arrayfun(@(x) [x.folder filesep x.name], objFiles, 'UniformOutput', false); % cell array with paths
+        
+        % Compile MEX interface
+        mex(objFiles{:}, '-output', outputName, '-silent') 
+        
+        % Delete unnecessary object files
         delete([solverName '/interface/*.o']);
     else % we're on a linux system
-        mex([solverName '/interface/*.o'], '-output', outputName,'-lrt', '-silent') 
+        
+        % Find all object files in interface fold
+        objFiles = dir([solverName '/interface/*.o']); % struct with name and folder in different fields
+        objFiles = arrayfun(@(x) [x.folder filesep x.name], objFiles, 'UniformOutput', false); % cell array with paths
+        
+        % Compile MEX interface
+        mex(objFiles{:}, '-output', outputName,'-lrt', '-silent') 
+        
+        % Delete unnecessary object files
         delete([solverName '/interface/*.o']);
     end
 else
