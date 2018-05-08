@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.12
+- Fixed a compilation bug in newer Matlab versions
+
 ## 0.1.11
 - Fixed a compilation bug under Windows
 
