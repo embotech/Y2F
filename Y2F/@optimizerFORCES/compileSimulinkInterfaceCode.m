@@ -24,9 +24,9 @@ end
 % final MEX build
 if exist( [cName '.c'], 'file' ) && exist( [simulinkName '.c'], 'file' )
     if( ~exist([solverName '/interface/' solverName '.obj'],'file') )
-        mex('-c','-g','-silent','-outdir',[solverName '/interface'],[cName '.c']) % compile C interface
+        mex('-c','-g','-largeArrayDims', '-silent','-outdir',[solverName '/interface'],[cName '.c']) % compile C interface
     end
-    mex('-c','-g','-silent','-outdir',[solverName '/interface'],[simulinkName '.c']) % compile Simulink interface
+    mex('-c','-g','-largeArrayDims', '-silent','-outdir',[solverName '/interface'],[simulinkName '.c']) % compile Simulink interface
     if( ispc ) % PC - we need additional libraries
         
         % Create a list of internal solver libraries
@@ -87,7 +87,8 @@ if exist( [cName '.c'], 'file' ) && exist( [simulinkName '.c'], 'file' )
                 '-output', outputName, ...
                 ['-L' solverName '/lib'], libs{:}, intelLibsDirFlag, ...
                 '-ldecimal', '-lirc', '-lmmt', '-lsvml_dispmt', ...
-                legacyLibs, '-lIPHLPAPI.lib', '-largeArrayDims','-silent');
+                '-compatibleArrayDims', ...
+                legacyLibs, '-lIPHLPAPI.lib', '-largeArrayDims', '-silent');
         else
             % it seems that we have been compiling with VS only,
             % so we do not add the Intel libs and use only object files
@@ -100,7 +101,7 @@ if exist( [cName '.c'], 'file' ) && exist( [simulinkName '.c'], 'file' )
             mex([solverName, '/interface/' solverName '.obj'], ...
                 [solverName, '/interface/' solverName '_simulinkBlock.obj'], ...
                 objFiles{:}, '-lIPHLPAPI.lib', legacyLibs, ...
-                '-output', [outputName(2:end-1),'.',mexext],'-silent');
+                '-output', [outputName(2:end-1),'.',mexext],'-largeArrayDims', '-silent');
         end
     elseif( ismac )
         
@@ -109,7 +110,7 @@ if exist( [cName '.c'], 'file' ) && exist( [simulinkName '.c'], 'file' )
         objFiles = arrayfun(@(x) [x.folder filesep x.name], objFiles, 'UniformOutput', false); % cell array with paths
         
         % Compile MEX interface
-        mex(objFiles{:}, '-output', outputName, '-silent') 
+        mex(objFiles{:}, '-output', outputName, '-largeArrayDims', '-silent') 
         delete([solverName '/interface/*.o']);
     else % we're on a linux system
         
@@ -118,7 +119,7 @@ if exist( [cName '.c'], 'file' ) && exist( [simulinkName '.c'], 'file' )
         objFiles = arrayfun(@(x) [x.folder filesep x.name], objFiles, 'UniformOutput', false); % cell array with paths
         
         % Compile MEX interface
-        mex(objFiles{:}, '-output', outputName,'-lrt', '-silent') 
+        mex(objFiles{:}, '-output', outputName, '-lrt', '-largeArrayDims', '-silent') 
         
         % Delete unnecessary object files
         delete([solverName '/interface/*.o']);

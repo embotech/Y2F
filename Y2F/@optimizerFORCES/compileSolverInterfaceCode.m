@@ -61,8 +61,8 @@ end
 
 % final MEX build
 if exist( [cName '.c'], 'file' ) && exist( [mexName '.c'], 'file' )
-    mex('-c','-g','-silent','-outdir',[solverName '/interface'],[cName '.c']) % compiles C interface
-    mex('-c','-g','-silent','-outdir',[solverName '/interface'],[mexName '.c']) % compiles MEX interface
+    mex('-c','-g','-largeArrayDims', '-silent','-outdir',[solverName '/interface'],[cName '.c']) % compiles C interface
+    mex('-c','-g','-largeArrayDims', '-silent','-outdir',[solverName '/interface'],[mexName '.c']) % compiles MEX interface
     
     if( ispc ) % PC - we need additional libraries
         
@@ -137,7 +137,7 @@ if exist( [cName '.c'], 'file' ) && exist( [mexName '.c'], 'file' )
             mex([solverName, '/interface/' solverName '.obj'], ...
                 [solverName, '/interface/' solverName '_mex.obj'], ...
                 objFiles{:}, '-lIPHLPAPI.lib', legacyLibs, ...
-                '-output', [outputName(2:end-1),'.',mexext], '-silent');
+                '-output', [outputName(2:end-1),'.',mexext], '-largeArrayDims', '-silent');
         end
     elseif( ismac ) % macOS
         
@@ -146,7 +146,7 @@ if exist( [cName '.c'], 'file' ) && exist( [mexName '.c'], 'file' )
         objFiles = arrayfun(@(x) [x.folder filesep x.name], objFiles, 'UniformOutput', false); % cell array with paths
         
         % Compile MEX interface
-        mex(objFiles{:}, '-output', outputName, '-silent') 
+        mex(objFiles{:}, '-output', outputName, '-largeArrayDims', '-silent') 
         
         % Delete unnecessary object files
         delete([solverName '/interface/*.o']);
@@ -157,7 +157,7 @@ if exist( [cName '.c'], 'file' ) && exist( [mexName '.c'], 'file' )
         objFiles = arrayfun(@(x) [x.folder filesep x.name], objFiles, 'UniformOutput', false); % cell array with paths
         
         % Compile MEX interface
-        mex(objFiles{:}, '-output', outputName,'-lrt', '-silent') 
+        mex(objFiles{:}, '-output', outputName, '-lrt', '-largeArrayDims', '-silent') 
         
         % Delete unnecessary object files
         delete([solverName '/interface/*.o']);
