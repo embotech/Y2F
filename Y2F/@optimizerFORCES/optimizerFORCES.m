@@ -417,6 +417,11 @@ end
         % internalmodel contains data that we need to recover parameters and
         % quadratic inequalities
         options = sdpsettings('solver','+quadprog','verbose',2);
+        
+        % Hack: Get YALMIP to return sparse matrices
+        options.linprog.LargeScale = 'on';
+        options.quadprog.LargeScale = 'on';
+        
         [model,~,diagnostics,internalmodel] = export(constraint,objective,options,[],[],1);
         if ~isempty(diagnostics)
             disp(diagnostics)
@@ -424,14 +429,14 @@ end
         end
 
         % Get matrices from quadprog model
-        H = full(model.Q);
-        f = full(model.c);
-        Aineq = full(model.A);
-        bineq = full(model.b);
-        Aeq = full(model.Aeq);
-        beq = full(model.beq);
-        lb = full(model.lb);
-        ub = full(model.ub);
+        H = model.Q;
+        f = model.c;
+        Aineq = model.A;
+        bineq = model.b;
+        Aeq = model.Aeq;
+        beq = model.beq;
+        lb = model.lb;
+        ub = model.ub;
 
         % YALMIP doesn't always recognize bounds as such (and makes them
         % inequalities) --> we have to convert them

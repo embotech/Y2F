@@ -81,8 +81,8 @@ createParamTime = 0;
 for i=1:G.n
     idx = G.vertices{i}; % sorting just to make sure code below works
     stages(i).dims.n = length(idx); % length of stage variable zi 
-    stages(i).cost.H = H(idx,idx); % Hessian
-    stages(i).cost.f = f(idx); % linear term
+    stages(i).cost.H = full(H(idx,idx)); % Hessian
+    stages(i).cost.f = full(f(idx)); % linear term
     
     % Is H a parameter?
     local_H_temp = H_temp(idx,idx);
@@ -117,18 +117,18 @@ for i=1:G.n
     end
     if d1IsSet
         if i > 1
-            stages(i-1).eq.C = Aeq(eq_idx,last_idx);
+            stages(i-1).eq.C = full(Aeq(eq_idx,last_idx));
         end
         stages(i).dims.r = length(eq_idx); % number of equality constraints
-        stages(i).eq.c = beq(eq_idx);
-        stages(i).eq.D = Aeq(eq_idx,idx);
+        stages(i).eq.c = full(beq(eq_idx));
+        stages(i).eq.D = full(Aeq(eq_idx,idx));
     else
         if i > 1
             stages(i-1).dims.r = length(eq_idx); % number of equality constraints
-            stages(i-1).eq.C = Aeq(eq_idx,last_idx);
-            stages(i-1).eq.c = beq(eq_idx);
+            stages(i-1).eq.C = full(Aeq(eq_idx,last_idx));
+            stages(i-1).eq.c = full(beq(eq_idx));
         end
-        stages(i).eq.D = Aeq(eq_idx,idx);
+        stages(i).eq.D = full(Aeq(eq_idx,idx));
     end
     
     % Create parameters only if there are equations
@@ -165,7 +165,7 @@ for i=1:G.n
     temp_lb = lb(idx);
     stages(i).dims.l = sum(temp_lb ~= -Inf); % number of lower bounds 
     stages(i).ineq.b.lbidx = find(temp_lb ~= -Inf)'; % index vector for lower bounds
-    stages(i).ineq.b.lb = temp_lb(temp_lb ~= -Inf);    % lower bounds
+    stages(i).ineq.b.lb = full(temp_lb(temp_lb ~= -Inf));    % lower bounds
     
     % Create parameter only if there are bounds
     if ~isempty(stages(i).ineq.b.lbidx)
@@ -180,7 +180,7 @@ for i=1:G.n
     temp_ub = ub(idx);
     stages(i).dims.u = sum(temp_ub ~= Inf); % number of upper bounds 
     stages(i).ineq.b.ubidx = find(temp_ub ~= Inf)'; % index vector for upper bounds
-    stages(i).ineq.b.ub = temp_ub(temp_ub ~= Inf);    % upper bounds
+    stages(i).ineq.b.ub = full(temp_ub(temp_ub ~= Inf));    % upper bounds
     
     % Create parameter only if there are bounds
     if ~isempty(stages(i).ineq.b.ubidx)
@@ -195,8 +195,8 @@ for i=1:G.n
     ineq_idx = find(sum(Aineq_temp(:,idx)~=0, 2))';
     stages(i).dims.p = length(ineq_idx); % number of polytopic constraints
     if ~isempty(ineq_idx)
-        stages(i).ineq.p.A = Aineq(ineq_idx, idx); % Jacobian of linear inequality 
-        stages(i).ineq.p.b = bineq(ineq_idx); % RHS of linear inequality
+        stages(i).ineq.p.A = full(Aineq(ineq_idx, idx)); % Jacobian of linear inequality 
+        stages(i).ineq.p.b = full(bineq(ineq_idx)); % RHS of linear inequality
 
         % Is p.A a parameter?
         % compute sparsity
@@ -253,7 +253,7 @@ for i=1:G.n
                 stages(i).ineq.q.idx{end+1} = quad_idx;
                 stages(i).ineq.q.Q{end+1} = full(Q{k}(idx(quad_idx),idx(quad_idx)));
                 stages(i).ineq.q.l{end+1} = full(l(idx(quad_idx),k)); % linear terms
-                stages(i).ineq.q.r(end+1) = r(k); % RHSs 
+                stages(i).ineq.q.r(end+1) = full(r(k)); % RHSs 
                 stages(i).dims.q = stages(i).dims.q + 1;
                     
                 orig_idx = idx(quad_idx);
