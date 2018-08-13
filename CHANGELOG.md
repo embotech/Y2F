@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.13
+- Y2F uses sparse matrices internally to be able to deal with larger problems.
+
 ## 0.1.12
 - Fixed a compilation bug in newer Matlab versions
 
