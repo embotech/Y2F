@@ -395,7 +395,7 @@ end
         if any(relevant_params) % We have QCQP params --> create a FORCES param
             % Create FORCES param
             param_id = sprintf('p_%u',p);
-            params(p) = newParam(param_id, stage, param_name, 'sparse', sparsityPattern);
+            params(p) = newParam(param_id, stage, param_name, 'sparse', full(sparsityPattern));
             
             % Make param map (additive parts of parameter, see help of
             % generateStagesFromGraph)
