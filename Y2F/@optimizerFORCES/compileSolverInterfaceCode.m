@@ -61,8 +61,14 @@ end
 
 % final MEX build
 if exist( [cName '.c'], 'file' ) && exist( [mexName '.c'], 'file' )
-    mex('-c','-g','-largeArrayDims', '-silent','-outdir',[solverName '/interface'],[cName '.c']) % compiles C interface
-    mex('-c','-g','-largeArrayDims', '-silent','-outdir',[solverName '/interface'],[mexName '.c']) % compiles MEX interface
+    if isfield(self.default_codeoptions, 'optlevel') && self.default_codeoptions.optlevel > 0
+        optFlags = '-O'; % enable code optimization
+    else
+        optFlags = '-g'; % disable optimization by enabling debug flags
+    end
+    
+    mex('-c',optFlags,'-largeArrayDims', '-silent','-outdir',[solverName '/interface'],[cName '.c']) % compiles C interface
+    mex('-c',optFlags,'-largeArrayDims', '-silent','-outdir',[solverName '/interface'],[mexName '.c']) % compiles MEX interface
     
     if( ispc ) % PC - we need additional libraries
         

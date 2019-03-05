@@ -23,10 +23,16 @@ end
 
 % final MEX build
 if exist( [cName '.c'], 'file' ) && exist( [simulinkName '.c'], 'file' )
-    if( ~exist([solverName '/interface/' solverName '.obj'],'file') )
-        mex('-c','-g','-largeArrayDims', '-silent','-outdir',[solverName '/interface'],[cName '.c']) % compile C interface
+    if isfield(self.default_codeoptions, 'optlevel') && self.default_codeoptions.optlevel > 0
+        optFlags = '-O'; % enable code optimization
+    else
+        optFlags = '-g'; % disable optimization by enabling debug flags
     end
-    mex('-c','-g','-largeArrayDims', '-silent','-outdir',[solverName '/interface'],[simulinkName '.c']) % compile Simulink interface
+    
+    if( ~exist([solverName '/interface/' solverName '.obj'],'file') )
+        mex('-c',optFlags,'-largeArrayDims', '-silent','-outdir',[solverName '/interface'],[cName '.c']) % compile C interface
+    end
+    mex('-c',optFlags,'-largeArrayDims', '-silent','-outdir',[solverName '/interface'],[simulinkName '.c']) % compile Simulink interface
     if( ispc ) % PC - we need additional libraries
         
         % Create a list of internal solver libraries
