@@ -11,6 +11,11 @@ success = 0;
 
 % Get solver name from option
 solverName = self.default_codeoptions.name;
+if(isfield(self.default_codeoptions, 'certification') && self.default_codeoptions.certification == 1)
+    solverName_constant = upper(solverName);
+else
+    solverName_constant = solverName;
+end
 
 % Check if FORCES solver has been generated
 if ~isdir(self.codeoptions{1}.name) && ~isdir(solverName)
@@ -50,31 +55,52 @@ cFileID = fopen([solverName '/interface/' solverName '.c'],'w');
 fprintf(hFileID, '/*\nHeader file containing definitions for C interface of %s,\n', solverName);
 fprintf(hFileID, ' a fast costumized optimization solver.\n*/\n\n');
 
-fprintf(hFileID, '#include <stdio.h>\n\n');
+fprintf(hFileID, '#ifndef %s_H\n',solverName_constant);
+fprintf(hFileID, '#define %s_H\n\n',solverName_constant);
 
-fprintf(hFileID, '#ifndef __%s_H__\n',solverName);
-fprintf(hFileID, '#define __%s_H__\n\n',solverName);
+fprintf(hFileID, '#include <stdio.h>\n\n');
 
 % Visual Studio 2015 Compatibility
 fprintf(hFileID, '/* For Visual Studio 2015 Compatibility */\n');
-fprintf(hFileID, '#if _MSC_VER == 1900\n');
+fprintf(hFileID, '#if (_MSC_VER >= 1900)\n');
 fprintf(hFileID, 'FILE * __cdecl __iob_func(void);\n');
 fprintf(hFileID, '#endif\n');
 
 fprintf(hFileID, '/* DATA TYPE ------------------------------------------------------------*/\n');
-fprintf(hFileID, 'typedef double %s_FLOAT;\n\n',solverName);
+fprintf(hFileID, 'typedef double %s_float;\n\n',solverName);
 
-%fprintf(hFileID, 'typedef double %sINTERFACE_FLOAT;\n\n',solverName);
+%fprintf(hFileID, 'typedef double %sinterface_float;\n\n',solverName);
+
+
+fprintf(hFileID, '#ifndef SOLVER_STANDARD_TYPES\n');
+fprintf(hFileID, '#define SOLVER_STANDARD_TYPES\n');
+fprintf(hFileID, '\n');
+fprintf(hFileID, 'typedef signed char solver_int8_signed;\n');
+fprintf(hFileID, 'typedef unsigned char solver_int8_unsigned;\n');
+fprintf(hFileID, 'typedef char solver_int8_default;\n');
+fprintf(hFileID, 'typedef signed short int solver_int16_signed;\n');
+fprintf(hFileID, 'typedef unsigned short int solver_int16_unsigned;\n');
+fprintf(hFileID, 'typedef short int solver_int16_default;\n');
+fprintf(hFileID, 'typedef signed int solver_int32_signed;\n');
+fprintf(hFileID, 'typedef unsigned int solver_int32_unsigned;\n');
+fprintf(hFileID, 'typedef int solver_int32_default;\n');
+fprintf(hFileID, 'typedef signed long long int solver_int64_signed;\n');
+fprintf(hFileID, 'typedef unsigned long long int solver_int64_unsigned;\n');
+fprintf(hFileID, 'typedef long long int solver_int64_default;\n');
+fprintf(hFileID, '\n');
+fprintf(hFileID, '#endif\n');
+fprintf(hFileID, '\n');
+
 
 fprintf(hFileID, '/* SOLVER SETTINGS ------------------------------------------------------*/\n');
 fprintf(hFileID, '/* print level */\n');
-fprintf(hFileID, '#ifndef %s_SET_PRINTLEVEL\n', solverName);
-fprintf(hFileID, '#define %s_SET_PRINTLEVEL    (%u)\n', solverName, self.default_codeoptions.printlevel);
+fprintf(hFileID, '#ifndef SET_PRINTLEVEL_%s\n', solverName_constant);
+fprintf(hFileID, '#define SET_PRINTLEVEL_%s    (%u)\n', solverName_constant, self.default_codeoptions.printlevel);
 fprintf(hFileID, '#endif\n\n');
 
 fprintf(hFileID, '/* PARAMETERS -----------------------------------------------------------*/\n');
 fprintf(hFileID, '/* fill this with data before calling the solver! */\n');
-fprintf(hFileID, 'typedef struct %s_params\n',solverName);
+fprintf(hFileID, 'typedef struct\n');
 fprintf(hFileID, '{\n');
 
 for i=1:self.numParams
@@ -87,7 +113,7 @@ for i=1:self.numParams
     else
         fprintf(hFileID, '\t/* matrix of size [%u x %u] (column major format) */\n',self.paramSizes(i,1),self.paramSizes(i,2));
     end
-    fprintf(hFileID, '\t%s_FLOAT %s[%u];\n\n',solverName,self.paramNames{i},prod(self.paramSizes(i,:)));
+    fprintf(hFileID, '\t%s_float %s[%u];\n\n',solverName,self.paramNames{i},prod(self.paramSizes(i,:)));
 end
 
 fprintf(hFileID, '} %s_params;\n\n\n',solverName);
@@ -95,7 +121,7 @@ fprintf(hFileID, '} %s_params;\n\n\n',solverName);
 
 fprintf(hFileID, '/* OUTPUTS --------------------------------------------------------------*/\n');
 fprintf(hFileID, '/* the desired variables are put here by the solver */\n');
-fprintf(hFileID, 'typedef struct %s_output\n',solverName);
+fprintf(hFileID, 'typedef struct\n');
 fprintf(hFileID, '{\n');
 
 for i=1:numel(self.outputSize)
@@ -108,7 +134,7 @@ for i=1:numel(self.outputSize)
     else
         fprintf(hFileID, '\t/* matrix of size [%u x %u] (column major format) */\n',self.outputSize{i}(1),self.outputSize{i}(2));
     end
-    fprintf(hFileID, '\t%s_FLOAT %s[%u];\n\n',solverName,self.outputNames{i},prod(self.outputSize{i}));
+    fprintf(hFileID, '\t%s_float %s[%u];\n\n',solverName,self.outputNames{i},prod(self.outputSize{i}));
 end
 
 fprintf(hFileID, '} %s_output;\n\n\n',solverName);
@@ -117,126 +143,126 @@ fprintf(hFileID, '} %s_output;\n\n\n',solverName);
 if self.numSolvers == 1
     fprintf(hFileID, '/* SOLVER INFO ----------------------------------------------------------*/\n');
     fprintf(hFileID, '/* diagnostic data from last interior point step */\n');
-    fprintf(hFileID, 'typedef struct %s_info\n',solverName);
+    fprintf(hFileID, 'typedef struct\n');
     fprintf(hFileID, '{\n');
     
     fprintf(hFileID, '\t/* iteration number */\n');
-    fprintf(hFileID, '\tint it;\n\n');
+    fprintf(hFileID, '\tsolver_int32_default it;\n\n');
 
 	fprintf(hFileID, '\t/* number of iterations needed to optimality (branch-and-bound) */\n');
-	fprintf(hFileID, '\tint it2opt;\n\n');
+	fprintf(hFileID, '\tsolver_int32_default it2opt;\n\n');
 	
     fprintf(hFileID, '\t/* inf-norm of equality constraint residuals */\n');
-    fprintf(hFileID, '\t%s_FLOAT res_eq;\n\n',solverName);
+    fprintf(hFileID, '\t%s_float res_eq;\n\n',solverName);
 	
     if isfield(self.default_codeoptions, 'solvemethod') && strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % extra field for ADMM
         fprintf(hFileID, '\t/* inf-norm of dual residual */\n');
-        fprintf(hFileID, '\t%s_FLOAT res_dual;\n\n',solverName);
+        fprintf(hFileID, '\t%s_float res_dual;\n\n',solverName);
     else % not for ADMM
         fprintf(hFileID, '\t/* inf-norm of inequality constraint residuals */\n');
-        fprintf(hFileID, '\t%s_FLOAT res_ineq;\n\n',solverName);
+        fprintf(hFileID, '\t%s_float res_ineq;\n\n',solverName);
     end
 
     fprintf(hFileID, '\t/* primal objective */\n');
-    fprintf(hFileID, '\t%s_FLOAT pobj;\n\n',solverName);
+    fprintf(hFileID, '\t%s_float pobj;\n\n',solverName);
 	
     fprintf(hFileID, '\t/* dual objective */\n');
-    fprintf(hFileID, '\t%s_FLOAT dobj;\n\n',solverName);
+    fprintf(hFileID, '\t%s_float dobj;\n\n',solverName);
 
     fprintf(hFileID, '\t/* duality gap := pobj - dobj */\n');
-    fprintf(hFileID, '\t%s_FLOAT dgap;\n\n',solverName);
+    fprintf(hFileID, '\t%s_float dgap;\n\n',solverName);
 	
     fprintf(hFileID, '\t/* relative duality gap := |dgap / pobj | */\n');
-    fprintf(hFileID, '\t%s_FLOAT rdgap;\n\n',solverName);
+    fprintf(hFileID, '\t%s_float rdgap;\n\n',solverName);
 
     if ~isfield(self.default_codeoptions, 'solvemethod') || ~strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % not for ADMM
         fprintf(hFileID, '\t/* duality measure */\n');
-        fprintf(hFileID, '\t%s_FLOAT mu;\n\n',solverName);
+        fprintf(hFileID, '\t%s_float mu;\n\n',solverName);
         
         fprintf(hFileID, '\t/* duality measure (after affine step) */\n');
-        fprintf(hFileID, '\t%s_FLOAT mu_aff;\n\n',solverName);
+        fprintf(hFileID, '\t%s_float mu_aff;\n\n',solverName);
         
         fprintf(hFileID, '\t/* centering parameter */\n');
-        fprintf(hFileID, '\t%s_FLOAT sigma;\n\n',solverName);
+        fprintf(hFileID, '\t%s_float sigma;\n\n',solverName);
         
         fprintf(hFileID, '\t/* number of backtracking line search steps (affine direction) */\n');
-        fprintf(hFileID, '\tint lsit_aff;\n\n');
+        fprintf(hFileID, '\tsolver_int32_default lsit_aff;\n\n');
         
         fprintf(hFileID, '\t/* number of backtracking line search steps (combined direction) */\n');
-        fprintf(hFileID, '\tint lsit_cc;\n\n');
+        fprintf(hFileID, '\tsolver_int32_default lsit_cc;\n\n');
         
         fprintf(hFileID, '\t/* step size (affine direction) */\n');
-        fprintf(hFileID, '\t%s_FLOAT step_aff;\n\n',solverName);
+        fprintf(hFileID, '\t%s_float step_aff;\n\n',solverName);
         
         fprintf(hFileID, '\t/* step size (combined direction) */\n');
-        fprintf(hFileID, '\t%s_FLOAT step_cc;\n\n',solverName);
+        fprintf(hFileID, '\t%s_float step_cc;\n\n',solverName);
     end
 
 	fprintf(hFileID, '\t/* solvertime */\n');
-	fprintf(hFileID, '\t%s_FLOAT solvetime;\n\n',solverName);
+	fprintf(hFileID, '\t%s_float solvetime;\n\n',solverName);
 
     fprintf(hFileID, '} %s_info;\n\n\n',solverName);
 else
     fprintf(hFileID, '/* SOLVER INFO ----------------------------------------------------------*/\n');
     fprintf(hFileID, '/* diagnostic data from last interior point step for every solver */\n');
     fprintf(hFileID, '/* (in total %u solvers are used) */\n',self.numSolvers);
-    fprintf(hFileID, 'typedef struct %s_info\n',solverName);
+    fprintf(hFileID, 'typedef struct\n');
     fprintf(hFileID, '{\n');
     
     fprintf(hFileID, '\t/* iteration number */\n');
-    fprintf(hFileID, '\tint it[%u];\n\n',self.numSolvers);
+    fprintf(hFileID, '\tsolver_int32_default it[%u];\n\n',self.numSolvers);
 
 	fprintf(hFileID, '\t/* number of iterations needed to optimality (branch-and-bound) */\n');
-	fprintf(hFileID, '\tint it2opt[%u];\n\n',self.numSolvers);
+	fprintf(hFileID, '\tsolver_int32_default it2opt[%u];\n\n',self.numSolvers);
 	
     fprintf(hFileID, '\t/* inf-norm of equality constraint residuals */\n');
-    fprintf(hFileID, '\t%s_FLOAT res_eq[%u];\n\n',solverName,self.numSolvers);
+    fprintf(hFileID, '\t%s_float res_eq[%u];\n\n',solverName,self.numSolvers);
     
     if isfield(self.default_codeoptions, 'solvemethod') && strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % extra field for ADMM
         fprintf(hFileID, '\t/* inf-norm of inequality constraint residuals */\n');
-        fprintf(hFileID, '\t%s_FLOAT res_dual[%u];\n\n',solverName,self.numSolvers);
+        fprintf(hFileID, '\t%s_float res_dual[%u];\n\n',solverName,self.numSolvers);
     else % not for ADMM
         fprintf(hFileID, '\t/* inf-norm of inequality constraint residuals */\n');
-        fprintf(hFileID, '\t%s_FLOAT res_ineq[%u];\n\n',solverName,self.numSolvers);
+        fprintf(hFileID, '\t%s_float res_ineq[%u];\n\n',solverName,self.numSolvers);
     end
 
     fprintf(hFileID, '\t/* primal objective */\n');
-    fprintf(hFileID, '\t%s_FLOAT pobj[%u];\n\n',solverName,self.numSolvers);
+    fprintf(hFileID, '\t%s_float pobj[%u];\n\n',solverName,self.numSolvers);
 	
     fprintf(hFileID, '\t/* dual objective */\n');
-    fprintf(hFileID, '\t%s_FLOAT dobj[%u];\n\n',solverName,self.numSolvers);
+    fprintf(hFileID, '\t%s_float dobj[%u];\n\n',solverName,self.numSolvers);
 
     fprintf(hFileID, '\t/* duality gap := pobj - dobj */\n');
-    fprintf(hFileID, '\t%s_FLOAT dgap[%u];\n\n',solverName,self.numSolvers);
+    fprintf(hFileID, '\t%s_float dgap[%u];\n\n',solverName,self.numSolvers);
 	
     fprintf(hFileID, '\t/* relative duality gap := |dgap / pobj | */\n');
-    fprintf(hFileID, '\t%s_FLOAT rdgap[%u];\n\n',solverName,self.numSolvers);
+    fprintf(hFileID, '\t%s_float rdgap[%u];\n\n',solverName,self.numSolvers);
 
     if ~isfield(self.default_codeoptions, 'solvemethod') || ~strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % not for ADMM
         fprintf(hFileID, '\t/* duality measure */\n');
-        fprintf(hFileID, '\t%s_FLOAT mu[%u];\n\n',solverName,self.numSolvers);
+        fprintf(hFileID, '\t%s_float mu[%u];\n\n',solverName,self.numSolvers);
 
         fprintf(hFileID, '\t/* duality measure (after affine step) */\n');
-        fprintf(hFileID, '\t%s_FLOAT mu_aff[%u];\n\n',solverName,self.numSolvers);
+        fprintf(hFileID, '\t%s_float mu_aff[%u];\n\n',solverName,self.numSolvers);
 
         fprintf(hFileID, '\t/* centering parameter */\n');
-        fprintf(hFileID, '\t%s_FLOAT sigma[%u];\n\n',solverName,self.numSolvers);
+        fprintf(hFileID, '\t%s_float sigma[%u];\n\n',solverName,self.numSolvers);
 
         fprintf(hFileID, '\t/* number of backtracking line search steps (affine direction) */\n');
-        fprintf(hFileID, '\tint lsit_aff[%u];\n\n',self.numSolvers);
+        fprintf(hFileID, '\tsolver_int32_default lsit_aff[%u];\n\n',self.numSolvers);
 
         fprintf(hFileID, '\t/* number of backtracking line search steps (combined direction) */\n');
-        fprintf(hFileID, '\tint lsit_cc[%u];\n\n',self.numSolvers);
+        fprintf(hFileID, '\tsolver_int32_default lsit_cc[%u];\n\n',self.numSolvers);
 
         fprintf(hFileID, '\t/* step size (affine direction) */\n');
-        fprintf(hFileID, '\t%s_FLOAT step_aff[%u];\n\n',solverName,self.numSolvers);
+        fprintf(hFileID, '\t%s_float step_aff[%u];\n\n',solverName,self.numSolvers);
 
         fprintf(hFileID, '\t/* step size (combined direction) */\n');
-        fprintf(hFileID, '\t%s_FLOAT step_cc[%u];\n\n',solverName,self.numSolvers);
+        fprintf(hFileID, '\t%s_float step_cc[%u];\n\n',solverName,self.numSolvers);
     end
 
 	fprintf(hFileID, '\t/* solvertime */\n');
-	fprintf(hFileID, '\t%s_FLOAT solvetime[%u];\n\n',solverName,self.numSolvers);
+	fprintf(hFileID, '\t%s_float solvetime[%u];\n\n',solverName,self.numSolvers);
 
     fprintf(hFileID, '} %s_info;\n\n\n',solverName);
 end
@@ -245,13 +271,14 @@ end
 fprintf(hFileID, '/* SOLVER FUNCTION DEFINITION -------------------------------------------*/\n');
 if self.numSolvers == 1
     fprintf(hFileID, '/* examine exitflag before using the result! */\n');
-    fprintf(hFileID, 'int %s_solve(%s_params* params, %s_output* output, %s_info* info, FILE* fs);\n\n', solverName, solverName, solverName, solverName);
+    fprintf(hFileID, 'extern solver_int32_default %s_solve(%s_params *params, %s_output *output, %s_info *info, FILE *fs);\n\n', solverName, solverName, solverName, solverName);
 else
     fprintf(hFileID, '/* examine all of the %u exitflags before using the result! */\n', self.numSolvers);
-    fprintf(hFileID, 'int* %s_solve(%s_params* params, %s_output* output, %s_info* info, FILE* fs);\n\n', solverName, solverName, solverName, solverName);
+    fprintf(hFileID, 'extern solver_int32_default *%s_solve(%s_params *params, %s_output *output, %s_info *info, FILE *fs);\n\n', solverName, solverName, solverName, solverName);
 end
 
-fprintf(hFileID, '#endif\n');
+
+fprintf(hFileID, '#endif /* %s_H */\n',solverName_constant);
 
 % Close h-file
 fclose(hFileID);
@@ -269,7 +296,7 @@ fprintf(cFileID, '#include <stdio.h>\n\n');
 
 % Visual Studio 2015 Compatibility
 fprintf(cFileID, '/* For Visual Studio 2015 Compatibility */\n');
-fprintf(cFileID, '#if _MSC_VER == 1900\n');
+fprintf(cFileID, '#if (_MSC_VER >= 1900)\n');
 fprintf(cFileID, 'FILE _iob[3];\n');
 fprintf(cFileID, 'FILE * __cdecl __iob_func(void)\n');
 fprintf(cFileID, '{\n');
@@ -280,34 +307,35 @@ fprintf(cFileID, '    return _iob;\n');
 fprintf(cFileID, '}\n');
 fprintf(cFileID, '#endif\n\n');
 
+% Start of interface function
+if self.numSolvers == 1
+    fprintf(cFileID, 'extern solver_int32_default %s_solve(%s_params *params, %s_output *output, %s_info *info, FILE *fs) \n{\n', solverName, solverName, solverName, solverName);
+else
+    fprintf(cFileID, 'extern solver_int32_default *%s_solve(%s_params *params, %s_output *output, %s_info *info, FILE *fs) \n{\n', solverName, solverName, solverName, solverName);
+end
+
 % Arguments for solver(s)
-fprintf(cFileID, '/* Some memory */\n');
+fprintf(cFileID, '\t/* Some memory */\n');
 for k=1:self.numSolvers
     if ~self.solverIsBinary(k) % no binary variables
-        fprintf(cFileID, '%s_params params_%u;\n',self.codeoptions{k}.name,k);
-        fprintf(cFileID, '%s_output output_%u;\n',self.codeoptions{k}.name,k);
-        fprintf(cFileID, '%s_info info_%u;\n\n',self.codeoptions{k}.name,k);
+        fprintf(cFileID, '\t%s_params params_%u;\n',self.codeoptions{k}.name,k);
+        fprintf(cFileID, '\t%s_output output_%u;\n',self.codeoptions{k}.name,k);
+        fprintf(cFileID, '\t%s_info info_%u;\n\n',self.codeoptions{k}.name,k);
     else
-        fprintf(cFileID, '%s_binaryparams params_%u;\n',self.codeoptions{k}.name,k);
-        fprintf(cFileID, '%s_binaryoutput output_%u;\n',self.codeoptions{k}.name,k);
-        fprintf(cFileID, '%s_info info_%u;\n\n',self.codeoptions{k}.name,k);
+        fprintf(cFileID, '\t%s_binaryparams params_%u;\n',self.codeoptions{k}.name,k);
+        fprintf(cFileID, '\t%s_binaryoutput output_%u;\n',self.codeoptions{k}.name,k);
+        fprintf(cFileID, '\t%s_info info_%u;\n\n',self.codeoptions{k}.name,k);
     end
 end
 if self.numSolvers == 1
-    fprintf(cFileID, 'int exitflag;\n');
+    fprintf(cFileID, '\tsolver_int32_default exitflag;\n');
 else
-    fprintf(cFileID, 'int exitflag[%u];\n',self.numSolvers);
+    fprintf(cFileID, '\tsolver_int32_default exitflag[%u];\n',self.numSolvers);
 end
 
-% Start of interface function
-if self.numSolvers == 1
-    fprintf(cFileID, 'int %s_solve(%s_params* params, %s_output* output, %s_info* info, FILE* fs) {\n', solverName, solverName, solverName, solverName);
-else
-    fprintf(cFileID, 'int* %s_solve(%s_params* params, %s_output* output, %s_info* info, FILE* fs) {\n', solverName, solverName, solverName, solverName);
-end
-    
+
 fprintf(cFileID, '\t/* define variables */\n');
-fprintf(cFileID, '\tint i;\n');
+fprintf(cFileID, '\tsolver_int32_default i;\n');
 
 % We need managment code for every solver
 for k=1:self.numSolvers
@@ -329,33 +357,33 @@ for k=1:self.numSolvers
                 ps = find(paramMap(1,:) == j); % all relevant param map entries
                 if isempty(ps)
                     % Load standard value
-                    fprintf(cFileID, '\tparams_%u.%s[%u] = %.15g;\n',k,fields{i},j-1,problem.(fields{i})(j));
+                    fprintf(cFileID, '\tparams_%u.%s[%u] = %.18g;\n',k,fields{i},j-1,problem.(fields{i})(j));
                 else
                     if abs(problem.(fields{i})(j)) > 1e-15 % only print standard value if it's not 0
-                        fprintf(cFileID, '\tparams_%u.%s[%u] = %.15g',k,fields{i},j-1,problem.(fields{i})(j)); % print std value
+                        param_save = sprintf('params_%u.%s[%u]',k,fields{i},j-1);
+                        fprintf(cFileID, '\t%s = %.18g;\n',param_save,problem.(fields{i})(j)); % print std value
                         
                         % Add additive parameters
                         for p=ps
                             factor = paramMap(2,p);
                             valueMatrix = paramMap(3,p);
                             valueIndex = paramMap(4,p);
-                            fprintf(cFileID, ' + %.15g * params->%s[%u]',factor,self.paramNames{valueMatrix},valueIndex-1);
+                            fprintf(cFileID, '\t%s += (%.18g * params->%s[%u]);\n',param_save,factor,self.paramNames{valueMatrix},valueIndex-1);
                         end
-                        fprintf(cFileID, ';\n');
                     else
                         % print first additive param
                         factor = paramMap(2,ps(1));
                         valueMatrix = paramMap(3,ps(1));
                         valueIndex = paramMap(4,ps(1));
-                        fprintf(cFileID, '\tparams_%u.%s[%u] = %.15g * params->%s[%u]',k,fields{i},j-1,factor,self.paramNames{valueMatrix},valueIndex-1);
+                        param_save = sprintf('params_%u.%s[%u]',k,fields{i},j-1);
+                        fprintf(cFileID, '\t%s = (%.18g * params->%s[%u]);\n',param_save,factor,self.paramNames{valueMatrix},valueIndex-1);
                         % Add other additive parameters
                         for p=ps(2:end)
                             factor = paramMap(2,p);
                             valueMatrix = paramMap(3,p);
                             valueIndex = paramMap(4,p);
-                            fprintf(cFileID, ' + %.15g * params->%s[%u]',factor,self.paramNames{valueMatrix},valueIndex-1);
+                            fprintf(cFileID, '\t%s += (%.18g * params->%s[%u]);\n',param_save,factor,self.paramNames{valueMatrix},valueIndex-1);
                         end
-                        fprintf(cFileID, ';\n');
                     end
                 end
             end
@@ -363,7 +391,7 @@ for k=1:self.numSolvers
         end
     else % we need the value of the fake parameter
         for i=1:numel(self.standardParamValues{k})
-            fprintf(cFileID, '\tparams_%u.p[%u] = %.15g;\n',k,i-1,self.standardParamValues{k}(i));
+            fprintf(cFileID, '\tparams_%u.p[%u] = %.18g;\n',k,i-1,self.standardParamValues{k}(i));
         end
     end
 
@@ -496,19 +524,20 @@ mapOffset = 0; % needed for outputMap
 for i=1:numel(self.outputBase) % every output has a base
     base = self.outputBase{i};
     for j=1:size(base,1) % elements (decision var or parameters) needed for this output
-        fprintf(cFileID, '\toutput->%s[%u] = %.15g',self.outputNames{i},j-1,base(j,1));
+        output_save = sprintf('output->%s[%u]',self.outputNames{i},j-1);
+        fprintf(cFileID, '\t%s = %.18g;\n',output_save,base(j,1));
         idx = find(base(j,2:end)); % index of necessary elements inside outputMap (plus offset)
         for k=idx
             if self.outputMap(1,k+mapOffset) == 1
-                fprintf(cFileID, ' + %.15g * output_%u.o_%u[0]',base(j,k+1),self.outputMap(2,k+mapOffset),self.outputMap(3,k+mapOffset));
+                fprintf(cFileID, '\t%s += (%.18g * output_%u.o_%u[0]);\n',output_save,base(j,k+1),self.outputMap(2,k+mapOffset),self.outputMap(3,k+mapOffset));
             elseif self.outputMap(1,k+mapOffset) == 2
-                fprintf(cFileID, ' + %.15g * params->%s[%u]',base(j,k+1),self.paramNames{self.outputMap(2,k+mapOffset)},self.outputMap(3,k+mapOffset)-1);
+                fprintf(cFileID, '\t%s += (%.18g * params->%s[%u]);\n',output_save,base(j,k+1),self.paramNames{self.outputMap(2,k+mapOffset)},self.outputMap(3,k+mapOffset)-1);
             else
                 error('Unknown output variable type');
             end
         end
 
-        fprintf(cFileID, ';\n\n\n');
+        fprintf(cFileID, '\n\n');
     end
     mapOffset = mapOffset + size(base,1);
 end

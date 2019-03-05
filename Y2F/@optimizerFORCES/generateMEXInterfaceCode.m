@@ -11,6 +11,11 @@ success = 0;
 
 % Get solver name from option
 solverName = self.default_codeoptions.name;
+if(isfield(self.default_codeoptions, 'certification') && self.default_codeoptions.certification == 1)
+    solverName_constant = upper(solverName);
+else
+    solverName_constant = solverName;
+end
 
 % Check if FORCES solver has been generated
 if ~isdir(solverName)
@@ -121,7 +126,7 @@ for i=1:self.numParams
 end
     
 % If the user wanted output, we need to store it
-fprintf(fileID, '\t#if %s_SET_PRINTLEVEL > 0\n',solverName);
+fprintf(fileID, '\t#if SET_PRINTLEVEL_%s > 0\n',solverName_constant);
 fprintf(fileID, '\t\t/* Prepare file for printfs */\n');
 fprintf(fileID, '\t\t/*fp = freopen("stdout_temp","w+",stdout);*/\n');
 fprintf(fileID, '\t\tfp = fopen("stdout_temp","w+");\n');
@@ -135,7 +140,7 @@ fprintf(fileID, '\t/* call solver */\n');
 fprintf(fileID, '\texitflag = %s_solve(&params, &output, &info, fp );\n\n',solverName);
 
 % Print output in console
-fprintf(fileID, '\t#if %s_SET_PRINTLEVEL > 0\n',solverName);
+fprintf(fileID, '\t#if SET_PRINTLEVEL_%s > 0\n',solverName_constant);
 fprintf(fileID, '\t\t/* Read contents of printfs printed to file */\n');
 fprintf(fileID, '\t\trewind(fp);\n');
 fprintf(fileID, '\t\twhile( (i = fgetc(fp)) != EOF ) {\n');

@@ -11,6 +11,11 @@ success = 0;
 
 % Get solver name from option
 solverName = self.default_codeoptions.name;
+if(isfield(self.default_codeoptions, 'certification') && self.default_codeoptions.certification == 1)
+    solverName_constant = upper(solverName);
+else
+    solverName_constant = solverName;
+end
 
 % Check if FORCES solver has been generated
 if ~isdir(solverName)
@@ -219,7 +224,7 @@ fprintf(fileID, '\n');
 fprintf(fileID, '   /* Solver data */\n');
 fprintf(fileID, '	%s_params params;\n',solverName);
 fprintf(fileID, '	%s_output output;\n',solverName);
-fprintf(fileID, '	%s_info info;	\n',solverName);
+fprintf(fileID, '	%s_info info;\n',solverName);
 if self.numSolvers == 1
     fprintf(fileID, '	int exitflag;\n');
 else
@@ -230,39 +235,43 @@ fprintf(fileID, '\n');
 fprintf(fileID, '	/* Extra NMPC data */\n');
 fprintf(fileID, '\n');
 
-fprintf(fileID, '	/* Copy inputs */\n');
+fprintf(fileID, '    /* Copy inputs */\n');
 for i=1:self.numParams
-    fprintf(fileID, '	for( i=0; i<%u; i++){ params.%s[i] = (double) param_%s[i]; }\n',prod(self.paramSizes(i,:)),self.paramNames{i},self.paramNames{i});
+    fprintf(fileID, '    for (i = 0; i < %u; i++) {\n',prod(self.paramSizes(i,:)));
+    fprintf(fileID, '        params.%s[i] = (double) param_%s[i];\n',self.paramNames{i},self.paramNames{i});
+    fprintf(fileID, '    }\n');
 end
 fprintf(fileID, '\n');
 
-fprintf(fileID, '    #if %s_SET_PRINTLEVEL > 0\n',solverName);
-fprintf(fileID, '		/* Prepare file for printfs */\n');
-fprintf(fileID, '        fp = fopen("stdout_temp","w+");\n');
-fprintf(fileID, '		if( fp == NULL ) {\n');
-fprintf(fileID, '			mexErrMsgTxt("freopen of stdout did not work.");\n');
-fprintf(fileID, '		}\n');
-fprintf(fileID, '		rewind(fp);\n');
-fprintf(fileID, '	#endif\n');
+fprintf(fileID, '#if SET_PRINTLEVEL_%s > 0\n',solverName_constant);
+fprintf(fileID, '	 /* Prepare file for printfs */\n');
+fprintf(fileID, '    fp = fopen("stdout_temp","w+");\n');
+fprintf(fileID, '	 if( fp == NULL ) {\n');
+fprintf(fileID, '        mexErrMsgTxt("freopen of stdout did not work.");\n');
+fprintf(fileID, '    }\n');
+fprintf(fileID, '    rewind(fp);\n');
+fprintf(fileID, '#endif\n');
 fprintf(fileID, '\n');
 
 fprintf(fileID, '	/* Call solver */\n');
 fprintf(fileID, '	exitflag = %s_solve(&params, &output, &info, fp );\n',solverName);
 fprintf(fileID, '\n');
 
-fprintf(fileID, '	#if %s_SET_PRINTLEVEL > 0\n',solverName);
-fprintf(fileID, '		/* Read contents of printfs printed to file */\n');
-fprintf(fileID, '		rewind(fp);\n');
-fprintf(fileID, '		while( (i = fgetc(fp)) != EOF ) {\n');
-fprintf(fileID, '			ssPrintf("%%c",i);\n');
-fprintf(fileID, '		}\n');
-fprintf(fileID, '		fclose(fp);\n');
-fprintf(fileID, '	#endif\n');
+fprintf(fileID, '#if SET_PRINTLEVEL_%s > 0\n',solverName_constant);
+fprintf(fileID, '	/* Read contents of printfs printed to file */\n');
+fprintf(fileID, '	rewind(fp);\n');
+fprintf(fileID, '	while( (i = fgetc(fp)) != EOF ) {\n');
+fprintf(fileID, '		ssPrintf("%%c",i);\n');
+fprintf(fileID, '	}\n');
+fprintf(fileID, '	fclose(fp);\n');
+fprintf(fileID, '#endif\n');
 fprintf(fileID, '\n');
 
 fprintf(fileID, '	/* Copy outputs */\n');
 for i=1:numel(self.outputSize)
-    fprintf(fileID, '	for( i=0; i<%u; i++){ output_%s[i] = (real_T) output.%s[i]; }\n',prod(self.outputSize{i}),self.outputNames{i},self.outputNames{i});
+    fprintf(fileID, '	for (i = 0; i < %u; i++){\n',prod(self.outputSize{i}));
+    fprintf(fileID, '	    output_%s[i] = (real_T) output.%s[i];\n',self.outputNames{i},self.outputNames{i});
+    fprintf(fileID, '	}\n');
 end
 
 % Info fields are optional
