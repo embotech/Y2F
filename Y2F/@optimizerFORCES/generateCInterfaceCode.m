@@ -268,7 +268,12 @@ else
 end
 
 % Solver function
-fprintf(hFileID, '/* SOLVER FUNCTION DEFINITION -------------------------------------------*/\n');
+fprintf(hFileID, '/* SOLVER FUNCTION DEFINITION -------------------------------------------*/\n\n');
+
+fprintf(hFileID, '#ifdef __cplusplus\n');
+fprintf(hFileID, 'extern "C" {\n');
+fprintf(hFileID, '#endif\n\n');
+
 if self.numSolvers == 1
     fprintf(hFileID, '/* examine exitflag before using the result! */\n');
     fprintf(hFileID, 'extern solver_int32_default %s_solve(%s_params *params, %s_output *output, %s_info *info, FILE *fs);\n\n', solverName, solverName, solverName, solverName);
@@ -276,6 +281,10 @@ else
     fprintf(hFileID, '/* examine all of the %u exitflags before using the result! */\n', self.numSolvers);
     fprintf(hFileID, 'extern solver_int32_default *%s_solve(%s_params *params, %s_output *output, %s_info *info, FILE *fs);\n\n', solverName, solverName, solverName, solverName);
 end
+
+fprintf(hFileID, '#ifdef __cplusplus\n');
+fprintf(hFileID, '}\n');
+fprintf(hFileID, '#endif\n\n');
 
 
 fprintf(hFileID, '#endif /* %s_H */\n',solverName_constant);
