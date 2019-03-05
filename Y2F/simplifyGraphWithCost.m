@@ -12,7 +12,7 @@ function G = simplifyGraphWithCost( G, H )
 % This file is part of the y2f project: http://github.com/embotech/y2f, 
 % a project maintained by embotech under the MIT open-source license.
 %
-% (c) Gian Ulli and embotech GmbH, Zurich, Switzerland, 2013-2016.
+% (c) Gian Ulli and embotech AG, Zurich, Switzerland, 2013-2019.
 
 if ~isempty(H) && size(H,1)~=size(H,2)
     error('H has to be quadratic')
