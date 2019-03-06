@@ -366,18 +366,18 @@ for k=1:self.numSolvers
                 ps = find(paramMap(1,:) == j); % all relevant param map entries
                 if isempty(ps)
                     % Load standard value
-                    fprintf(cFileID, '\tparams_%u.%s[%u] = %.18g;\n',k,fields{i},j-1,problem.(fields{i})(j));
+                    fprintf(cFileID, '\tparams_%u.%s[%u] = %.18f;\n',k,fields{i},j-1,problem.(fields{i})(j));
                 else
                     if abs(problem.(fields{i})(j)) > 1e-15 % only print standard value if it's not 0
                         param_save = sprintf('params_%u.%s[%u]',k,fields{i},j-1);
-                        fprintf(cFileID, '\t%s = %.18g;\n',param_save,problem.(fields{i})(j)); % print std value
+                        fprintf(cFileID, '\t%s = %.18f;\n',param_save,problem.(fields{i})(j)); % print std value
                         
                         % Add additive parameters
                         for p=ps
                             factor = paramMap(2,p);
                             valueMatrix = paramMap(3,p);
                             valueIndex = paramMap(4,p);
-                            fprintf(cFileID, '\t%s += (%.18g * params->%s[%u]);\n',param_save,factor,self.paramNames{valueMatrix},valueIndex-1);
+                            fprintf(cFileID, '\t%s += (%.18f * params->%s[%u]);\n',param_save,factor,self.paramNames{valueMatrix},valueIndex-1);
                         end
                     else
                         % print first additive param
@@ -385,13 +385,13 @@ for k=1:self.numSolvers
                         valueMatrix = paramMap(3,ps(1));
                         valueIndex = paramMap(4,ps(1));
                         param_save = sprintf('params_%u.%s[%u]',k,fields{i},j-1);
-                        fprintf(cFileID, '\t%s = (%.18g * params->%s[%u]);\n',param_save,factor,self.paramNames{valueMatrix},valueIndex-1);
+                        fprintf(cFileID, '\t%s = (%.18f * params->%s[%u]);\n',param_save,factor,self.paramNames{valueMatrix},valueIndex-1);
                         % Add other additive parameters
                         for p=ps(2:end)
                             factor = paramMap(2,p);
                             valueMatrix = paramMap(3,p);
                             valueIndex = paramMap(4,p);
-                            fprintf(cFileID, '\t%s += (%.18g * params->%s[%u]);\n',param_save,factor,self.paramNames{valueMatrix},valueIndex-1);
+                            fprintf(cFileID, '\t%s += (%.18f * params->%s[%u]);\n',param_save,factor,self.paramNames{valueMatrix},valueIndex-1);
                         end
                     end
                 end
@@ -400,7 +400,7 @@ for k=1:self.numSolvers
         end
     else % we need the value of the fake parameter
         for i=1:numel(self.standardParamValues{k})
-            fprintf(cFileID, '\tparams_%u.p[%u] = %.18g;\n',k,i-1,self.standardParamValues{k}(i));
+            fprintf(cFileID, '\tparams_%u.p[%u] = %.18f;\n',k,i-1,self.standardParamValues{k}(i));
         end
     end
 
@@ -534,13 +534,13 @@ for i=1:numel(self.outputBase) % every output has a base
     base = self.outputBase{i};
     for j=1:size(base,1) % elements (decision var or parameters) needed for this output
         output_save = sprintf('output->%s[%u]',self.outputNames{i},j-1);
-        fprintf(cFileID, '\t%s = %.18g;\n',output_save,base(j,1));
+        fprintf(cFileID, '\t%s = %.18f;\n',output_save,base(j,1));
         idx = find(base(j,2:end)); % index of necessary elements inside outputMap (plus offset)
         for k=idx
             if self.outputMap(1,k+mapOffset) == 1
-                fprintf(cFileID, '\t%s += (%.18g * output_%u.o_%u[0]);\n',output_save,base(j,k+1),self.outputMap(2,k+mapOffset),self.outputMap(3,k+mapOffset));
+                fprintf(cFileID, '\t%s += (%.18f * output_%u.o_%u[0]);\n',output_save,base(j,k+1),self.outputMap(2,k+mapOffset),self.outputMap(3,k+mapOffset));
             elseif self.outputMap(1,k+mapOffset) == 2
-                fprintf(cFileID, '\t%s += (%.18g * params->%s[%u]);\n',output_save,base(j,k+1),self.paramNames{self.outputMap(2,k+mapOffset)},self.outputMap(3,k+mapOffset)-1);
+                fprintf(cFileID, '\t%s += (%.18f * params->%s[%u]);\n',output_save,base(j,k+1),self.paramNames{self.outputMap(2,k+mapOffset)},self.outputMap(3,k+mapOffset)-1);
             else
                 error('Unknown output variable type');
             end
