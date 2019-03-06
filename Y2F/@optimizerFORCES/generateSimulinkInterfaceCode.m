@@ -284,25 +284,25 @@ if (isfield(self.default_codeoptions,'showinfo') && self.default_codeoptions.sho
         fprintf(fileID, '    solver_exitflag[0] = exitflag;\n');
     else % multiple solvers
         % sum iterations
-        fprintf(fileID, '    iterations[0] = info.it[0]');
+        fprintf(fileID, '    iterations[0] = info.it[0];\n');
         for i=2:self.numSolvers
-            fprintf(fileID, ' + info.it[%u]', i-1);
+            fprintf(fileID, ' iterations[0] += info.it[%u];\n', i-1);
         end
-        fprintf(fileID, ';\n');
+        fprintf(fileID, '\n');
         
         % sum solve times
-        fprintf(fileID, '    solve_time[0] = info.solvetime[0]');
+        fprintf(fileID, '    solve_time[0] = info.solvetime[0];\n');
         for i=2:self.numSolvers
-            fprintf(fileID, ' + info.solvetime[%u]', i-1);
+            fprintf(fileID, '    solve_time[0] += info.solvetime[%u];\n', i-1);
         end
-        fprintf(fileID, ';\n');
+        fprintf(fileID, '\n');
         
         % sum objective values
-        fprintf(fileID, '    primal_obj[0] = info.pobj[0]');
+        fprintf(fileID, '    primal_obj[0] = info.pobj[0];\n');
         for i=2:self.numSolvers
-            fprintf(fileID, ' + info.pobj[%u]', i-1);
+            fprintf(fileID, '    primal_obj[0] += info.pobj[%u];\n', i-1);
         end
-        fprintf(fileID, ';\n');
+        fprintf(fileID, '\n');
         
         % Find worst exitflag (worst-to-best: -100,-10,-2,-1,0,2,1)
         if isempty(self.qcqpParams.bidx) % not branch-and-bound
