@@ -368,7 +368,7 @@ for k=1:self.numSolvers
                     % Load standard value
                     fprintf(cFileID, '\tparams_%u.%s[%u] = %.18f;\n',k,fields{i},j-1,problem.(fields{i})(j));
                 else
-                    if abs(problem.(fields{i})(j)) > 1e-15 % only print standard value if it's not 0
+                    if problem.(fields{i})(j) ~= 0.0 % only print standard value if it's not 0
                         param_save = sprintf('params_%u.%s[%u]',k,fields{i},j-1);
                         fprintf(cFileID, '\t%s = %.18f;\n',param_save,problem.(fields{i})(j)); % print std value
                         
@@ -534,8 +534,23 @@ for i=1:numel(self.outputBase) % every output has a base
     base = self.outputBase{i};
     for j=1:size(base,1) % elements (decision var or parameters) needed for this output
         output_save = sprintf('output->%s[%u]',self.outputNames{i},j-1);
-        fprintf(cFileID, '\t%s = %.18f;\n',output_save,base(j,1));
         idx = find(base(j,2:end)); % index of necessary elements inside outputMap (plus offset)
+        if isempty(idx) || base(j,1) ~= 0.0 % only print standard value if it's not 0
+            fprintf(cFileID, '\t%s = %.18f;\n',output_save,base(j,1));
+        else
+            if self.outputMap(1,idx(1)+mapOffset) == 1
+                fprintf(cFileID, '\t%s = (%.18f * output_%u.o_%u[0]);\n',...
+                        output_save, base(j,idx(1)+1), self.outputMap(2,idx(1)+mapOffset), ...
+                        self.outputMap(3,idx(1)+mapOffset));
+            elseif self.outputMap(1,idx(1)+mapOffset) == 2
+                fprintf(cFileID, '\t%s = (%.18f * params->%s[%u]);\n',...
+                        output_save,base(j,idx(1)+1), self.paramNames{self.outputMap(2,idx(1)+mapOffset)}, ...
+                        self.outputMap(3,idx(1)+mapOffset)-1);
+            else
+                error('Unknown output variable type');
+            end
+            idx(1) = []; % remove first element
+        end
         for k=idx
             if self.outputMap(1,k+mapOffset) == 1
                 fprintf(cFileID, '\t%s += (%.18f * output_%u.o_%u[0]);\n',output_save,base(j,k+1),self.outputMap(2,k+mapOffset),self.outputMap(3,k+mapOffset));
@@ -545,8 +560,7 @@ for i=1:numel(self.outputBase) % every output has a base
                 error('Unknown output variable type');
             end
         end
-
-        fprintf(cFileID, '\n\n');
+        fprintf(cFileID, '\n');
     end
     mapOffset = mapOffset + size(base,1);
 end
