@@ -1,15 +1,24 @@
 # Changelog
 
+## 0.1.14
+
+- Y2F generates MISRA C compliant code.
+- MEX and Simulink interfaces are compiled with optimization turned on if `codeoptions.optlevel` > 0.
+
 ## 0.1.13
+
 - Y2F uses sparse matrices internally to be able to deal with larger problems.
 
 ## 0.1.12
+
 - Fixed a compilation bug in newer Matlab versions
 
 ## 0.1.11
+
 - Fixed a compilation bug under Windows
 
 ## 0.1.10
+
 - Fixed a compilation bug under Windows when using the new Azure servers
 
 ## 0.1.9
