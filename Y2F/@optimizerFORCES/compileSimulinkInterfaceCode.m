@@ -99,29 +99,40 @@ if exist( [cName '.c'], 'file' ) && exist( [simulinkName '.c'], 'file' )
             % so we do not add the Intel libs and use only object files
             
             % Find all object files in obj folder
-            objFiles = dir([solverName '/obj/*.obj']); % struct with name and folder in different fields
-            objFiles = arrayfun(@(x) [x.folder filesep x.name], objFiles, 'UniformOutput', false); % cell array with paths
+            objFiles = dir([solverName filesep 'obj']); % struct with name and folder in different fields
+            objFiles = objFiles(~cellfun(@isempty, regexp({objFiles.name}, '\.obj$', 'start', 'once')));
+            objFiles = arrayfun(@(x) [solverName filesep 'obj' filesep x.name], ...
+                                objFiles, 'UniformOutput', false); % cell array with paths
             
             % Compile MEX interface
             mex([solverName, '/interface/' solverName '.obj'], ...
                 [solverName, '/interface/' solverName '_simulinkBlock.obj'], ...
                 objFiles{:}, '-lIPHLPAPI.lib', legacyLibs, ...
                 '-output', [outputName(2:end-1),'.',mexext],'-largeArrayDims', '-silent');
+        
+            % Delete unnecessary object files
+            delete([solverName '/interface/*.obj']);
         end
     elseif( ismac )
         
         % Find all object files in interface folder
-        objFiles = dir([solverName '/interface/*.o']); % struct with name and folder in different fields
-        objFiles = arrayfun(@(x) [x.folder filesep x.name], objFiles, 'UniformOutput', false); % cell array with paths
+        objFiles = dir([solverName filesep 'interface']); % struct with name and folder in different fields
+        objFiles = objFiles(~cellfun(@isempty, regexp({objFiles.name}, '\.o$', 'start', 'once')));
+        objFiles = arrayfun(@(x) [solverName filesep 'interface' filesep x.name], ...
+                            objFiles, 'UniformOutput', false); % cell array with paths
         
         % Compile MEX interface
-        mex(objFiles{:}, '-output', outputName, '-largeArrayDims', '-silent') 
+        mex(objFiles{:}, '-output', outputName, '-largeArrayDims', '-silent')
+        
+        % Delete unnecessary object files
         delete([solverName '/interface/*.o']);
     else % we're on a linux system
         
-        % Find all object files in interface fold
-        objFiles = dir([solverName '/interface/*.o']); % struct with name and folder in different fields
-        objFiles = arrayfun(@(x) [x.folder filesep x.name], objFiles, 'UniformOutput', false); % cell array with paths
+        % Find all object files in interface folder
+        objFiles = dir([solverName filesep 'interface']); % struct with name and folder in different fields
+        objFiles = objFiles(~cellfun(@isempty, regexp({objFiles.name}, '\.o$', 'start', 'once')));
+        objFiles = arrayfun(@(x) [solverName filesep 'interface' filesep x.name], ...
+                            objFiles, 'UniformOutput', false); % cell array with paths
         
         % Compile MEX interface
         mex(objFiles{:}, '-output', outputName, '-lrt', '-largeArrayDims', '-silent') 
