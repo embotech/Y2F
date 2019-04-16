@@ -342,7 +342,6 @@ fprintf('   [OK, %5.1f sec]\n', assembleStagesTime);
                                  arrayfun(@(x) x.dims.p, stages) ...
                                  arrayfun(@(x) x.dims.q, stages)]));
         maxFieldWidth = max(1, ceil(log10(maxFieldValue+1)));
-        maxFieldWidth = maxFieldWidth + 1;
 
         % print header
         fprintf('%s  stage                    ', indentation);
