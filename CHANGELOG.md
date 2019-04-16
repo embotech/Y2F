@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.15
+
+- Fixed a compilation bug in Matlab versions <= R2016a.
+- Added printing of stage dimensions.
+
 ## 0.1.14
 
 - Y2F generates MISRA C compliant code.
