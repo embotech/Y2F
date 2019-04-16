@@ -296,17 +296,8 @@ for i=1:numel(solverOutputs)
 end
 
 graphComponents = pathGraphsFromQcqp(H_temp,Aineq_temp,Aeq_temp,Q_temp,l_temp);
-[graphComponents, stages, params, standardParamValues,forcesParamMap] = stagesFromPathGraphs(graphComponents,H,f,Aineq,bineq,Aeq,beq,l,Q,r,lb,ub,qcqpParams,yalmipParamMap,outputIdx);
-
-if numel(stages) == 1
-    fprintf('Found %u stages.\n', numel(stages{1}));
-else  % we have multiple solvers
-    fprintf('The problem is separable. %u solvers are needed:\n', numel(stages));
-    for i=1:numel(stages)
-        fprintf('    - Solver %u has %u stages\n', i, numel(stages{i}));
-    end
-end
-
+[graphComponents, stages, params, standardParamValues,forcesParamMap] = ...
+    stagesFromPathGraphs(graphComponents,H,f,Aineq,bineq,Aeq,beq,l,Q,r,lb,ub,qcqpParams,yalmipParamMap,outputIdx);
 
 %% Assemble the rest of the FORCES parameters
 % Fake a parameter for each solver if there are none (we need one for FORCES)
@@ -336,6 +327,86 @@ outputFORCES = buildOutput();
 
 assembleStagesTime=toc;
 fprintf('   [OK, %5.1f sec]\n', assembleStagesTime);
+
+%% Print stage sizes
+
+    % Helper function for printing number of variables, equalities and inequalities
+    function printStageSizes(indentation, stages)
+
+        % Compute width of fields
+        maxFieldValue = max(abs([length(stages) ...
+                                 arrayfun(@(x) x.dims.n, stages) ...
+                                 arrayfun(@(x) x.dims.r, stages) ...
+                                 arrayfun(@(x) x.dims.l, stages) ...
+                                 arrayfun(@(x) x.dims.u, stages) ...
+                                 arrayfun(@(x) x.dims.p, stages) ...
+                                 arrayfun(@(x) x.dims.q, stages)]));
+        maxFieldWidth = max(1, ceil(log10(maxFieldValue+1)));
+        maxFieldWidth = maxFieldWidth + 1;
+
+        % print header
+        fprintf('%s  stage                    ', indentation);
+        for k = 1:length(stages)
+            fprintf('%*d  ', maxFieldWidth, k);
+        end
+        fprintf('\n');
+
+        nameColWidth = 27;
+        fprintf([indentation repmat('-', 1, nameColWidth + length(stages)*(2+maxFieldWidth)) '\n']);
+
+        % print size of variables 
+        fprintf('%s  # variables:             ', indentation);
+        for k = 1:length(stages)
+            fprintf('%*d  ', maxFieldWidth, stages(k).dims.n);
+        end
+        fprintf('\n');
+
+        % print size of equality constraints
+        fprintf('%s  # equality constraints:  ', indentation);
+        for k = 1:length(stages)
+            fprintf('%*d  ', maxFieldWidth, stages(k).dims.r);
+        end
+        fprintf('\n');
+
+        % print size of lower bounds
+        fprintf('%s  # lower bounds:          ', indentation);
+        for k = 1:length(stages)
+            fprintf('%*d  ', maxFieldWidth, stages(k).dims.l);
+        end
+        fprintf('\n');
+
+        % print size of upper bounds
+        fprintf('%s  # upper bounds:          ', indentation);
+        for k = 1:length(stages)
+            fprintf('%*d  ', maxFieldWidth, stages(k).dims.u);
+        end
+        fprintf('\n');
+
+        % size of polytopic constraints
+        fprintf('%s  # polytopic constraints: ', indentation);
+        for k = 1:length(stages)
+            fprintf('%*d  ', maxFieldWidth, stages(k).dims.p);
+        end
+        fprintf('\n');
+
+        % size of quadratic constraints
+        fprintf('%s  # quadratic constraints: ', indentation);
+        for k = 1:length(stages)
+            fprintf('%*d  ', maxFieldWidth, stages(k).dims.q);
+        end
+        fprintf('\n');
+    end
+
+if numel(stages) == 1
+    fprintf('Found %u stages:\n', numel(stages{1}));
+    printStageSizes('  ', stages{1});    
+else  % we have multiple solvers
+    fprintf('The problem is separable. %u solvers are needed:\n', numel(stages));
+    for i=1:numel(stages)
+        fprintf('    - Solver %u has %u stages:\n', i, numel(stages{i}));
+        printStageSizes('        ', stages{i});
+    end
+end
 
 %% Generate solver using FORCES
 disp('Generating solver using FORCES...')
