@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.16
+- Added support for MinGW mex compiler
+
 ## 0.1.15
 
 - Fixed a compilation bug in Matlab versions <= R2016a.

@@ -13,6 +13,21 @@ cName = [solverName '/interface/' solverName];
 simulinkName = [solverName '/interface/' solverName '_simulinkBlock'];
 outputName = ['"' solverName '_simulinkBlock"'];
 
+try 
+    thisCompiler = mex.getCompilerConfigurations('C','Selected');
+    mexcomp.name = thisCompiler(1).Name;
+    mexcomp.ver = thisCompiler(1).Version;
+    mexcomp.vendor = thisCompiler(1).Manufacturer;
+catch
+    mexcomp = [];
+end
+
+if(isstruct(mexcomp) && isfield(mexcomp, 'name') && strncmpi(mexcomp.name, 'MinGW', 5))
+    isMinGW = true;
+else
+    isMinGW = false;
+end
+
 % copy the O-files of all solvers into /interface
 % we'll delete them later, but this makes compilation easier
 for i=1:self.numSolvers
@@ -38,14 +53,27 @@ if exist( [cName '.c'], 'file' ) && exist( [simulinkName '.c'], 'file' )
         % Create a list of internal solver libraries
         if( exist([solverName,filesep,'lib'],'dir') )
             libs = cell(1,self.numSolvers);
-            for i=1:self.numSolvers
-                lib = dir([solverName,filesep,'lib/',self.codeoptions{i}.name,'*.lib']);
-                if length(lib)>1
-                    % fix for new server which produces shared and static
-                    % libraries, so we have more than 1 library found above
-                    lib = dir([solverName,filesep,'lib/',self.codeoptions{i}.name,'_static.lib']);
+
+            if(isMinGW)
+                for i=1:self.numSolvers
+                    lib = dir([solverName,filesep,'lib/lib',self.codeoptions{i}.name,'*.a']);
+                    if length(lib)>1
+                        % fix for new server which produces shared and static
+                        % libraries, so we have more than 1 library found above
+                        lib = dir([solverName,filesep,'lib/lib',self.codeoptions{i}.name,'.a']);
+                    end
+                    libs{i} = [lib.name];
                 end
-                libs{i} = ['-l' lib.name(1:end-4)];
+            else
+                for i=1:self.numSolvers
+                    lib = dir([solverName,filesep,'lib/',self.codeoptions{i}.name,'*.lib']);
+                    if length(lib)>1
+                        % fix for new server which produces shared and static
+                        % libraries, so we have more than 1 library found above
+                        lib = dir([solverName,filesep,'lib/',self.codeoptions{i}.name,'_static.lib']);
+                    end
+                    libs{i} = ['-l' lib.name(1:end-4)];
+                end
             end
         end
         
@@ -56,7 +84,7 @@ if exist( [cName '.c'], 'file' ) && exist( [simulinkName '.c'], 'file' )
         % figure our whether we need additional libraries for Intel
         clientPath = fileparts(which('generateCode'));
         intelLibsDir = [clientPath,filesep,'libs_intel'];
-        if( exist( intelLibsDir, 'dir' ) )
+        if( exist( intelLibsDir, 'dir' ) && ~isMinGW)
             % If subdirectory for specific architecture exisst, we need to
             % use that
             archDir = [intelLibsDir, filesep, 'win', arch];
@@ -88,12 +116,20 @@ if exist( [cName '.c'], 'file' ) && exist( [simulinkName '.c'], 'file' )
         
         % Call mex compiler
         if( exist([solverName,filesep,'lib'],'dir') )
-            mex([solverName '/interface/' solverName '.obj'], ...
-                [solverName '/interface/' solverName '_simulinkBlock.obj'], ...
-                '-output', outputName, ...
-                ['-L' solverName '/lib'], libs{:}, intelLibsDirFlag, ...
-                '-ldecimal', '-lirc', '-lmmt', '-lsvml_dispmt', ...
-                legacyLibs, '-lIPHLPAPI.lib', '-largeArrayDims', '-silent');
+            if(~isMinGW)
+                mex([solverName '/interface/' solverName '.obj'], ...
+                    [solverName '/interface/' solverName '_simulinkBlock.obj'], ...
+                    '-output', outputName, ...
+                    ['-L' solverName '/lib'], libs{:}, intelLibsDirFlag, ...
+                    '-ldecimal', '-lirc', '-lmmt', '-lsvml_dispmt', ...
+                    legacyLibs, '-lIPHLPAPI.lib', '-largeArrayDims', '-silent');
+            else
+                mex([solverName '/interface/' solverName '.obj'], ...
+                    [solverName '/interface/' solverName '_simulinkBlock.obj'], ...
+                    '-output', outputName, ...
+                    [solverName '/lib/', libs{:}], ...
+                    '-lIPHLPAPI.lib', '-largeArrayDims', '-silent');
+            end
         else
             % it seems that we have been compiling with VS only,
             % so we do not add the Intel libs and use only object files
