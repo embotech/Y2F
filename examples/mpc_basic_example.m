@@ -1,7 +1,7 @@
 % Basic MPC example demonstrating the use of Yalmip to formulate MPC 
 % problems and FORCES to solve them very quickly.
 %
-% Simple MPC - double integrator example for use with FORCES Pro
+% Simple MPC - double integrator example for use with FORCES PRO
 % 
 %  min   xN'*P*xN + sum_{i=0}^{N-1} xi'*Q*xi + ui'*R*ui
 % xi,ui
@@ -74,7 +74,7 @@ end
 
 %% Create controller object (generates code)
 % for a complete list of codeoptions, see 
-% https://www.embotech.com/FORCES-Pro/User-Manual/Low-level-Interface/Solver-Options
+% https://www.embotech.com/FORCES-PRO/User-Manual/Low-level-Interface/Solver-Options
 codeoptions = getOptions('simpleMPC_solver'); % give solver a name
 controller = optimizerFORCES(const, cost, codeoptions, X(:,1), U(:,1), {'xinit'}, {'u0'});
 

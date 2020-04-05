@@ -4,7 +4,7 @@
 % In this example, we will make the cost weights parametric for later
 % tuning.
 %
-% Simple MPC - double integrator example for use with FORCES Pro
+% Simple MPC - double integrator example for use with FORCES PRO
 % 
 %  min   xN'*P*xN + sum_{i=0}^{N-1} xi'*Q*xi + ui'*R*ui
 % xi,ui
@@ -75,7 +75,7 @@ end
 
 %% Create controller object (generates code)
 % for a complete list of codeoptions, see 
-% https://www.embotech.com/FORCES-Pro/User-Manual/Low-level-Interface/Solver-Options
+% https://www.embotech.com/FORCES-PRO/User-Manual/Low-level-Interface/Solver-Options
 codeoptions = getOptions('parametricCost_solver'); % give solver a name
 parameters     = { X(:,1),   Q,   R,   P  };
 parameterNames = { 'xinit', 'Q', 'R', 'P' };

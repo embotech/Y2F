@@ -53,7 +53,7 @@ else % no library found
     fprintf(mFileID, '%% This function specifies that the Y2F library should appear in the\n');
     fprintf(mFileID, '%% Library Browser and be cached in the browser repository\n');
     fprintf(mFileID, 'Browser.Library = ''y2f_simulink_lib'';\n');
-    fprintf(mFileID, 'Browser.Name = ''Y2F FORCES Pro Solvers'';\n');
+    fprintf(mFileID, 'Browser.Name = ''Y2F FORCES PRO Solvers'';\n');
     fprintf(mFileID, 'blkStruct.Browser = Browser;\n');
     
     fclose(mFileID);
@@ -130,7 +130,7 @@ for i=1:numel(self.outputSize)
     end
 end
 
-help = sprintf('%s\nFor more information, see https://www.embotech.com/FORCES-Pro/How-to-use/Simulink-Interface/Simulink-Block',help);
+help = sprintf('%s\nFor more information, see https://www.embotech.com/FORCES-PRO/How-to-use/Simulink-Interface/Simulink-Block',help);
 
 set_param([library '/' block], 'MaskHelp', help);
 
