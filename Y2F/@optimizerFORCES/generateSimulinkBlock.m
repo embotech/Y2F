@@ -130,7 +130,7 @@ for i=1:numel(self.outputSize)
     end
 end
 
-help = sprintf('%s\nFor more information, see https://www.embotech.com/FORCES-PRO/How-to-use/Simulink-Interface/Simulink-Block',help);
+help = sprintf('%s\nFor more information, see https://www.embotech.com/FORCES-Pro/How-to-use/Simulink-Interface/Simulink-Block',help);
 
 set_param([library '/' block], 'MaskHelp', help);
 

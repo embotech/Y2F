@@ -1,7 +1,7 @@
 # Y2F - YALMIP to FORCES PRO Interface
 
 This project provides a simple MATLAB interface that connects [YALMIP](http://users.isy.liu.se/johanl/yalmip/pmwiki.php?n=Main.WhatIsYALMIP)
-with [FORCES PRO](https://www.embotech.com/FORCES-PRO). It combines YALMIP's intuitiveness with the high efficiency of FORCES PRO for rapid development.
+with [FORCES PRO](https://www.embotech.com/FORCES-Pro). It combines YALMIP's intuitiveness with the high efficiency of FORCES PRO for rapid development.
 
 ## Installation
 

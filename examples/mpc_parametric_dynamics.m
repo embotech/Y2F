@@ -75,7 +75,7 @@ end
 
 %% Create controller object (generates code)
 % for a complete list of codeoptions, see 
-% https://www.embotech.com/FORCES-PRO/User-Manual/Low-level-Interface/Solver-Options
+% https://www.embotech.com/FORCES-Pro/User-Manual/Low-level-Interface/Solver-Options
 codeoptions = getOptions('parametricDynamics_solver'); % give solver a name
 parameters = { x0, A, B };
 parameterNames = { 'xinit', 'Amatrix', 'Bmatrix' };

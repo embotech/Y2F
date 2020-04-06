@@ -70,7 +70,7 @@ end
 
 %% Create controller object (generates code)
 % for a complete list of codeoptions, see 
-% https://www.embotech.com/FORCES-PRO/User-Manual/Low-level-Interface/Solver-Options
+% https://www.embotech.com/FORCES-Pro/User-Manual/Low-level-Interface/Solver-Options
 codeoptions = getOptions('simpleMPC_solver_ADMM'); % give solver a name
 codeoptions.solvemethod = 'ADMM'; % use ADMM as solve method
 codeoptions.maxit = 1000;
