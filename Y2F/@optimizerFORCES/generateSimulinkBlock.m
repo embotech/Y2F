@@ -5,7 +5,7 @@ function generateSimulinkBlock( self )
 % This file is part of the y2f project: http://github.com/embotech/y2f, 
 % a project maintained by embotech under the MIT open-source license.
 %
-% (c) Gian Ulli and embotech AG, Zurich, Switzerland, 2013-2019.
+% (c) Gian Ulli and embotech AG, Zurich, Switzerland, 2013-2020.
 
 success = 0;
 
@@ -53,7 +53,7 @@ else % no library found
     fprintf(mFileID, '%% This function specifies that the Y2F library should appear in the\n');
     fprintf(mFileID, '%% Library Browser and be cached in the browser repository\n');
     fprintf(mFileID, 'Browser.Library = ''y2f_simulink_lib'';\n');
-    fprintf(mFileID, 'Browser.Name = ''Y2F FORCES Pro Solvers'';\n');
+    fprintf(mFileID, 'Browser.Name = ''Y2F FORCES PRO Solvers'';\n');
     fprintf(mFileID, 'blkStruct.Browser = Browser;\n');
     
     fclose(mFileID);

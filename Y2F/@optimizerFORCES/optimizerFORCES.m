@@ -1,8 +1,8 @@
 function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,parameters,solverOutputs,parameterNames,outputNames )
-%OPTIMIZERFORCES Generates a FORCES Pro solver from a YALMIP problem formulation
+%OPTIMIZERFORCES Generates a FORCES PRO solver from a YALMIP problem formulation
 %
 %   solver = OPTIMIZERFORCES(constraint,objective,codeoptions,parameters,solverOutputs)
-%   generates a solver using FORCES Pro that solves the specified problem
+%   generates a solver using FORCES PRO that solves the specified problem
 %   for given parameter values and returns the value of the specified
 %   outputs. The solver can be called  by indexing the returned OPTIMIZERFORCES
 %   object with the parameter values. The parameter values can be passed in
@@ -36,7 +36,7 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
 %   Inputs:
 %       constraint:     constraints in YALMIP format, see e.g. OPTIMIZER
 %       objective:      objective in YALMIP format, see e.g. OPTIMIZER
-%       codeoptions:    options for FORCES Pro solver, see GETOPTIONS
+%       codeoptions:    options for FORCES PRO solver, see GETOPTIONS
 %       parameters:     Single SDPVAR object or cell array of SDPVAR
 %                       objects that should be considered a parameter
 %       solverOutputs:  Single SDPVAR object or cell array of SDPVAR
@@ -69,7 +69,7 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
 % This file is part of the y2f project: http://github.com/embotech/y2f, 
 % a project maintained by embotech under the MIT open-source license.
 %
-% (c) Gian Ulli and embotech AG, Zurich, Switzerland, 2013-2019.
+% (c) Gian Ulli and embotech AG, Zurich, Switzerland, 2013-2020.
 
 disp('YALMIP-to-FORCES code generator')
 disp('-------------------------------')
@@ -102,7 +102,7 @@ end
 
 % We need parameters
 if isempty(parameters)
-    error('FORCES Pro does not support problems without parameters.');
+    error('FORCES PRO does not support problems without parameters.');
 end
 
 % Read parameter names if they were passed along
@@ -190,7 +190,7 @@ end
 
 
 %% Call YALMIP and convert QP into FORCES format
-disp('This is Y2F (v0.1.16), the YALMIP interface of FORCES Pro.');
+disp('This is Y2F (v0.1.16), the YALMIP interface of FORCES PRO.');
 disp('For more information visit https://github.com/embotech/y2f');
 fprintf('\nUsing YALMIP to convert problem into QP...')
 tic;
