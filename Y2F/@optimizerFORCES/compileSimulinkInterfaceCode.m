@@ -83,7 +83,7 @@ if exist( [cName '.c'], 'file' ) && exist( [simulinkName '.c'], 'file' )
         
         % figure our whether we need additional libraries for Intel
         clientPath = fileparts(which('generateCode'));
-        intelLibsDir = [clientPath,filesep,'libs_intel'];
+        intelLibsDir = [clientPath,filesep,'libs_Intel'];
         if( exist( intelLibsDir, 'dir' ) && ~isMinGW)
             % If subdirectory for specific architecture exisst, we need to
             % use that
@@ -92,7 +92,6 @@ if exist( [cName '.c'], 'file' ) && exist( [simulinkName '.c'], 'file' )
                 intelLibsDir = archDir;
             end
             intelLibsDirFlag = ['-L', intelLibsDir];
-            addpath(intelLibsDir); savepath;
         else
             intelLibsDirFlag = '';
         end

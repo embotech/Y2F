@@ -3,6 +3,7 @@
 ## 0.1.16
 - Added support for MinGW mex compiler
 - Updated product name and fixed dates
+- not saving path for intel libs
 
 ## 0.1.15
 
