@@ -66,11 +66,36 @@ else
     isMinGW = false;
 end
 
-% copy the O-files of all solvers into /interface
+% copy the object/library files of all solvers into /interface
 % we'll delete them later, but this makes compilation easier
-for i=1:self.numSolvers
-    if( ~ispc )
-        copyfile(sprintf('%s/lib/lib%s.a',solverName,self.codeoptions{i}.name), sprintf('%s/interface',solverName), 'f');
+if( ~ispc )
+    missingObjs = false;
+    missingLibs = false;
+    useLibraryFiles = true;
+    % check whether libraries and object files exist
+    for i=1:self.numSolvers
+        objName = sprintf('%s/obj/%s.o',solverName,self.codeoptions{i}.name); 
+        libName = sprintf('%s/lib/lib%s.a',solverName,self.codeoptions{i}.name);
+        if(~exist(objName, 'file'))
+            missingObjs = true;
+        end
+        if(~exist(libName, 'file'))
+            missingLibs = true;
+        end
+    end
+    if(missingLibs && missingObjs)
+        error('Cannot find object files or libraries to compile');
+    end
+    if(~missingLibs)
+        useLibraryFiles = true;
+        for i=1:self.numSolvers
+            copyfile(sprintf('%s/lib/lib%s.a',solverName,self.codeoptions{i}.name), sprintf('%s/interface',solverName), 'f');
+        end
+    else
+        useLibraryFiles = false;
+        for i=1:self.numSolvers
+            copyfile(sprintf('%s/obj/%s.o',solverName,self.codeoptions{i}.name), sprintf('%s/interface',solverName), 'f');
+        end
     end
 end
 
@@ -185,36 +210,44 @@ if exist( [cName '.c'], 'file' ) && exist( [mexName '.c'], 'file' )
             % Delete unnecessary object files
             delete([solverName '/interface/*.obj']);
         end
-    elseif( ismac ) % macOS
+    else % macOS or linux system
         
+        if(useLibraryFiles)
+            % Find all library files in interface folder
+            libFiles = dir([solverName filesep 'interface']); % struct with name and folder in different fields
+            libFiles = libFiles(~cellfun(@isempty, regexp({libFiles.name}, '\.a$', 'start', 'once')));
+            libFiles = arrayfun(@(x) [solverName filesep 'interface' filesep x.name], ...
+                                libFiles, 'UniformOutput', false); % cell array with paths
+        end
+
         % Find all object files in interface folder
-        libFiles = dir([solverName filesep 'interface']); % struct with name and folder in different fields
-        libFiles = libFiles(~cellfun(@isempty, regexp({libFiles.name}, '\.a$', 'start', 'once')));
-        libFiles = arrayfun(@(x) [solverName filesep 'interface' filesep x.name], ...
-                            libFiles, 'UniformOutput', false); % cell array with paths
+        objFiles = dir([solverName filesep 'interface']); % struct with name and folder in different fields
+        objFiles = objFiles(~cellfun(@isempty, regexp({objFiles.name}, '\.o$', 'start', 'once')));
+        objFiles = arrayfun(@(x) [solverName filesep 'interface' filesep x.name], ...
+                            objFiles, 'UniformOutput', false); % cell array with paths
         
-        % Compile MEX interface
-        mex([solverName '/interface/' solverName '_mex.o'], ...
-            [solverName '/interface/' solverName '.o'], ...
-            libFiles{:}, '-output', outputName, '-largeArrayDims', '-silent')
+
+        if( ismac ) % macOS system
+            % Compile MEX interface
+            if(useLibraryFiles)
+                mex(objFiles{:}, libFiles{:}, '-output', outputName, '-largeArrayDims', '-silent');
+            else
+                mex(objFiles{:}, '-output', outputName, '-largeArrayDims', '-silent');
+            end
+        else % linux system
+            % Compile MEX interface
+            if(useLibraryFiles)
+                mex(objFiles{:}, libFiles{:}, '-output', outputName, '-lrt', '-largeArrayDims', '-silent');
+            else
+                mex(objFiles{:}, '-output', outputName, '-lrt', '-largeArrayDims', '-silent');
+            end
+        end
         
-        % Delete unnecessary object files
-        delete([solverName '/interface/lib*.a']);
-    else % we're on a linux system
-        
-        % Find all object files in interface folder
-        libFiles = dir([solverName filesep 'interface']); % struct with name and folder in different fields
-        libFiles = libFiles(~cellfun(@isempty, regexp({libFiles.name}, '\.a$', 'start', 'once')));
-        libFiles = arrayfun(@(x) [solverName filesep 'interface' filesep x.name], ...
-                            libFiles, 'UniformOutput', false); % cell array with paths
-        
-        % Compile MEX interface
-        mex([solverName '/interface/' solverName '_mex.o'], ...
-            [solverName '/interface/' solverName '.o'], ...
-            libFiles{:}, '-output', outputName, '-lrt', '-largeArrayDims', '-silent') 
-        
-        % Delete unnecessary object files
-        delete([solverName '/interface/lib*.a']);
+        % Delete unnecessary library/object files
+        if(useLibraryFiles)
+            delete([solverName '/interface/lib*.a']);
+        end
+        delete([solverName '/interface/*.o']);
     end
 else
     fprintf('Could not find source file. This file is meant to be used for building from source code.');
