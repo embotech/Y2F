@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.17
+- updated interface to use library files instead of object files
+
 ## 0.1.16
 - Added support for MinGW mex compiler
 - Updated product name and fixed dates
