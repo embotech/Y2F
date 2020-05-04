@@ -182,34 +182,29 @@ if exist( [cName '.c'], 'file' ) && exist( [simulinkName '.c'], 'file' )
         end
     else % macOS or linux system
         
+        % we create a cell array for mex interface, main solver and all internal solvers
+        linkFiles = cell(1,self.numSolvers + 2);
+        linkFiles{1} = [solverName, '/interface/', solverName, '.o'];
+        linkFiles{2} = [solverName, '/interface/', solverName, '_simulinkBlock.o'];
         if(useLibraryFiles)
-            % Find all library files in interface folder
-            libFiles = dir([solverName filesep 'interface']); % struct with name and folder in different fields
-            libFiles = libFiles(~cellfun(@isempty, regexp({libFiles.name}, '\.a$', 'start', 'once')));
-            libFiles = arrayfun(@(x) [solverName filesep 'interface' filesep x.name], ...
-                                libFiles, 'UniformOutput', false); % cell array with paths
-        end
-
-        % Find all object files in interface folder
-        objFiles = dir([solverName filesep 'interface']); % struct with name and folder in different fields
-        objFiles = objFiles(~cellfun(@isempty, regexp({objFiles.name}, '\.o$', 'start', 'once')));
-        objFiles = arrayfun(@(x) [solverName filesep 'interface' filesep x.name], ...
-                            objFiles, 'UniformOutput', false); % cell array with paths
+            % Add all library files in lib folder
+            for i=1:self.numSolvers
+                libFile = [solverName, '/lib/lib', self.codeoptions{i}.name, '.a'];
+                linkFiles{2 + i} = libFile;
+            end
+        else
+            % Add all object files in obj folder
+            for i=1:self.numSolvers
+                objFile = [solverName, '/obj/', self.codeoptions{i}.name, '.o'];
+                linkFiles{2 + i} = objFile;
+            end
+        end    
         
+        % Compile MEX interface
         if( ismac ) % macOS system
-            % Compile MEX interface
-            if(useLibraryFiles)
-                mex(objFiles{:}, libFiles{:}, '-output', outputName, '-largeArrayDims', '-silent');
-            else
-                mex(objFiles{:}, '-output', outputName, '-largeArrayDims', '-silent');
-            end
+            mex(linkFiles{:}, '-output', outputName, '-largeArrayDims', '-silent');
         else % linux system
-            % Compile MEX interface
-            if(useLibraryFiles)
-                mex(objFiles{:}, libFiles{:}, '-output', outputName, '-lrt', '-largeArrayDims', '-silent');
-            else
-                mex(objFiles{:}, '-output', outputName, '-lrt', '-largeArrayDims', '-silent');
-            end
+            mex(linkFiles{:}, '-output', outputName, '-lrt', '-largeArrayDims', '-silent');
         end
         
         % Delete unnecessary library/object files
