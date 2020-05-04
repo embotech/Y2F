@@ -159,16 +159,22 @@ if exist( [cName '.c'], 'file' ) && exist( [simulinkName '.c'], 'file' )
             % it seems that we have been compiling with VS only,
             % so we do not add the Intel libs and use only object files
             
-            % Find all object files in obj folder
-            objFiles = dir([solverName filesep 'obj']); % struct with name and folder in different fields
-            objFiles = objFiles(~cellfun(@isempty, regexp({objFiles.name}, '\.obj$', 'start', 'once')));
-            objFiles = arrayfun(@(x) [solverName filesep 'obj' filesep x.name], ...
-                                objFiles, 'UniformOutput', false); % cell array with paths
+            % we create a cell array for mex interface, main solver and all internal solvers
+            linkFiles = cell(1,self.numSolvers + 2);
+            linkFiles{1} = [solverName, '/interface/', solverName, '.obj'];
+            linkFiles{2} = [solverName, '/interface/', solverName, '_simulinkBlock.obj'];
+            % Add all object files in obj folder
+            for i=1:self.numSolvers
+                objFile = [solverName, '/obj/', self.codeoptions{i}.name, '.obj'];
+                if exist(objFile, 'file')
+                    linkFiles{2 + i} = objFile;
+                else
+                    error(['Object file ', objFile, ' not found. Compilation aborted');
+                end
+            end
             
             % Compile MEX interface
-            mex([solverName, '/interface/' solverName '.obj'], ...
-                [solverName, '/interface/' solverName '_simulinkBlock.obj'], ...
-                objFiles{:}, '-lIPHLPAPI.lib', legacyLibs, ...
+            mex(linkFiles{:}, '-lIPHLPAPI.lib', legacyLibs, ...
                 '-output', [outputName(2:end-1),'.',mexext],'-largeArrayDims', '-silent');
         
             % Delete unnecessary object files
