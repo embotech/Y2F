@@ -198,7 +198,7 @@ if exist( [cName '.c'], 'file' ) && exist( [mexName '.c'], 'file' )
                 if exist(objFile, 'file')
                     linkFiles{2 + i} = objFile;
                 else
-                    error(['Object file ', objFile, ' not found. Compilation aborted');
+                    error(['Object file ', objFile, ' not found. Compilation aborted']);
                 end
             end
 
