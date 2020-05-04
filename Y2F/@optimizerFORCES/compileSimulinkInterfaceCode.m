@@ -28,8 +28,7 @@ else
     isMinGW = false;
 end
 
-% copy the object/library files of all solvers into /interface
-% we'll delete them later, but this makes compilation easier
+% check the object/library files of all solvers
 if( ~ispc )
     missingObjs = false;
     missingLibs = false;
@@ -50,14 +49,8 @@ if( ~ispc )
     end
     if(~missingLibs)
         useLibraryFiles = true;
-        for i=1:self.numSolvers
-            copyfile(sprintf('%s/lib/lib%s.a',solverName,self.codeoptions{i}.name), sprintf('%s/interface',solverName), 'f');
-        end
     else
         useLibraryFiles = false;
-        for i=1:self.numSolvers
-            copyfile(sprintf('%s/obj/%s.o',solverName,self.codeoptions{i}.name), sprintf('%s/interface',solverName), 'f');
-        end
     end
 end
 
@@ -207,10 +200,7 @@ if exist( [cName '.c'], 'file' ) && exist( [simulinkName '.c'], 'file' )
             mex(linkFiles{:}, '-output', outputName, '-lrt', '-largeArrayDims', '-silent');
         end
         
-        % Delete unnecessary library/object files
-        if(useLibraryFiles)
-            delete([solverName '/interface/lib*.a']);
-        end
+        % Delete unnecessary object files
         delete([solverName '/interface/*.o']);
     end
 else
