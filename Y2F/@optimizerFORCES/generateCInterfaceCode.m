@@ -316,7 +316,31 @@ fprintf(cFileID, '    return _iob;\n');
 fprintf(cFileID, '}\n');
 fprintf(cFileID, '#endif\n\n');
 
+if(isfield(self.default_codeoptions, 'threadSafeStorage') && self.default_codeoptions.threadSafeStorage > 0)
+    fprintf(cFileID, '#ifndef thread_local\n');
+    fprintf(cFileID, '#if (__STDC_VERSION__ >= 201112) && (!defined __STDC_NO_THREADS__)\n');
+    fprintf(cFileID, '#define thread_local _Thread_local\n');
+    fprintf(cFileID, '#elif defined _WIN32 && ( \\\n');
+    fprintf(cFileID, '      defined _MSC_VER || \\\n');
+    fprintf(cFileID, '      defined __ICL || \\\n');
+    fprintf(cFileID, '      defined __DMC__ || \\\n');
+    fprintf(cFileID, '      defined __BORLANDC__ )\n');
+    fprintf(cFileID, '#define thread_local __declspec(thread) \n');
+    fprintf(cFileID, '/* note that ICC (linux) and Clang are covered by __GNUC__ */\n');
+    fprintf(cFileID, '#elif defined __GNUC__ || \\\n');
+    fprintf(cFileID, '      defined __SUNPRO_C || \\\n');
+    fprintf(cFileID, '      defined __xlC__\n');
+    fprintf(cFileID, '#define thread_local __thread\n');
+    fprintf(cFileID, '#else\n');
+    fprintf(cFileID, '#error "Cannot define thread_local"\n');
+    fprintf(cFileID, '#endif\n');
+    fprintf(cFileID, '#endif\n');
+    fprintf(cFileID, '\n');
+    static_keyword = 'static thread_local';
+else
     static_keyword = 'static';
+end
+    
 % Start of interface function
 if self.numSolvers == 1
     fprintf(cFileID, 'extern solver_int32_default %s_solve(%s_params *params, %s_output *output, %s_info *info, FILE *fs) \n{\n', solverName, solverName, solverName, solverName);
