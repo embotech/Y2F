@@ -50,9 +50,9 @@ fprintf(fileID, '}\n\n');
 
 % Arguments for solver(s)
 fprintf(fileID, '/* Some memory for mex-function */\n');
-fprintf(fileID, '%s_params params;\n',solverName);
-fprintf(fileID, '%s_output output;\n',solverName);
-fprintf(fileID, '%s_info info;\n\n',solverName);
+fprintf(fileID, 'static %s_params params;\n',solverName);
+fprintf(fileID, 'static %s_output output;\n',solverName);
+fprintf(fileID, 'static %s_info info;\n\n',solverName);
 
 % Start of MEX function
 fprintf(fileID, '/* THE mex-function */\n');

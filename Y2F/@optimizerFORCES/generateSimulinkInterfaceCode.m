@@ -222,9 +222,9 @@ end
     
 fprintf(fileID, '\n');
 fprintf(fileID, '   /* Solver data */\n');
-fprintf(fileID, '	%s_params params;\n',solverName);
-fprintf(fileID, '	%s_output output;\n',solverName);
-fprintf(fileID, '	%s_info info;\n',solverName);
+fprintf(fileID, '	static %s_params params;\n',solverName);
+fprintf(fileID, '	static %s_output output;\n',solverName);
+fprintf(fileID, '	static %s_info info;\n',solverName);
 if self.numSolvers == 1
     fprintf(fileID, '	int exitflag;\n');
 else
