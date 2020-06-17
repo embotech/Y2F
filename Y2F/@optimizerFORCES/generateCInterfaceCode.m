@@ -316,6 +316,7 @@ fprintf(cFileID, '    return _iob;\n');
 fprintf(cFileID, '}\n');
 fprintf(cFileID, '#endif\n\n');
 
+    static_keyword = 'static';
 % Start of interface function
 if self.numSolvers == 1
     fprintf(cFileID, 'extern solver_int32_default %s_solve(%s_params *params, %s_output *output, %s_info *info, FILE *fs) \n{\n', solverName, solverName, solverName, solverName);
@@ -327,13 +328,13 @@ end
 fprintf(cFileID, '\t/* Some memory */\n');
 for k=1:self.numSolvers
     if ~self.solverIsBinary(k) % no binary variables
-        fprintf(cFileID, '\t%s_params params_%u;\n',self.codeoptions{k}.name,k);
-        fprintf(cFileID, '\t%s_output output_%u;\n',self.codeoptions{k}.name,k);
-        fprintf(cFileID, '\t%s_info info_%u;\n\n',self.codeoptions{k}.name,k);
+        fprintf(cFileID, '\t%s %s_params params_%u;\n',static_keyword, self.codeoptions{k}.name,k);
+        fprintf(cFileID, '\t%s %s_output output_%u;\n',static_keyword, self.codeoptions{k}.name,k);
+        fprintf(cFileID, '\t%s %s_info info_%u;\n\n',static_keyword, self.codeoptions{k}.name,k);
     else
-        fprintf(cFileID, '\t%s_binaryparams params_%u;\n',self.codeoptions{k}.name,k);
-        fprintf(cFileID, '\t%s_binaryoutput output_%u;\n',self.codeoptions{k}.name,k);
-        fprintf(cFileID, '\t%s_info info_%u;\n\n',self.codeoptions{k}.name,k);
+        fprintf(cFileID, '\t%s %s_binaryparams params_%u;\n',static_keyword, self.codeoptions{k}.name,k);
+        fprintf(cFileID, '\t%s %s_binaryoutput output_%u;\n',static_keyword, self.codeoptions{k}.name,k);
+        fprintf(cFileID, '\t%s %s_info info_%u;\n\n',static_keyword, self.codeoptions{k}.name,k);
     end
 end
 if self.numSolvers == 1
