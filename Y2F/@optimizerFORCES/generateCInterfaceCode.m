@@ -316,6 +316,31 @@ fprintf(cFileID, '    return _iob;\n');
 fprintf(cFileID, '}\n');
 fprintf(cFileID, '#endif\n\n');
 
+if(isfield(self.default_codeoptions, 'threadSafeStorage') && self.default_codeoptions.threadSafeStorage > 0)
+    fprintf(cFileID, '#ifndef thread_local\n');
+    fprintf(cFileID, '#if (__STDC_VERSION__ >= 201112) && (!defined __STDC_NO_THREADS__)\n');
+    fprintf(cFileID, '#define thread_local _Thread_local\n');
+    fprintf(cFileID, '#elif defined _WIN32 && ( \\\n');
+    fprintf(cFileID, '      defined _MSC_VER || \\\n');
+    fprintf(cFileID, '      defined __ICL || \\\n');
+    fprintf(cFileID, '      defined __DMC__ || \\\n');
+    fprintf(cFileID, '      defined __BORLANDC__ )\n');
+    fprintf(cFileID, '#define thread_local __declspec(thread) \n');
+    fprintf(cFileID, '/* note that ICC (linux) and Clang are covered by __GNUC__ */\n');
+    fprintf(cFileID, '#elif defined __GNUC__ || \\\n');
+    fprintf(cFileID, '      defined __SUNPRO_C || \\\n');
+    fprintf(cFileID, '      defined __xlC__\n');
+    fprintf(cFileID, '#define thread_local __thread\n');
+    fprintf(cFileID, '#else\n');
+    fprintf(cFileID, '#error "Cannot define thread_local"\n');
+    fprintf(cFileID, '#endif\n');
+    fprintf(cFileID, '#endif\n');
+    fprintf(cFileID, '\n');
+    static_keyword = 'static thread_local';
+else
+    static_keyword = 'static';
+end
+    
 % Start of interface function
 if self.numSolvers == 1
     fprintf(cFileID, 'extern solver_int32_default %s_solve(%s_params *params, %s_output *output, %s_info *info, FILE *fs) \n{\n', solverName, solverName, solverName, solverName);
@@ -327,13 +352,13 @@ end
 fprintf(cFileID, '\t/* Some memory */\n');
 for k=1:self.numSolvers
     if ~self.solverIsBinary(k) % no binary variables
-        fprintf(cFileID, '\t%s_params params_%u;\n',self.codeoptions{k}.name,k);
-        fprintf(cFileID, '\t%s_output output_%u;\n',self.codeoptions{k}.name,k);
-        fprintf(cFileID, '\t%s_info info_%u;\n\n',self.codeoptions{k}.name,k);
+        fprintf(cFileID, '\t%s %s_params params_%u;\n',static_keyword, self.codeoptions{k}.name,k);
+        fprintf(cFileID, '\t%s %s_output output_%u;\n',static_keyword, self.codeoptions{k}.name,k);
+        fprintf(cFileID, '\t%s %s_info info_%u;\n\n',static_keyword, self.codeoptions{k}.name,k);
     else
-        fprintf(cFileID, '\t%s_binaryparams params_%u;\n',self.codeoptions{k}.name,k);
-        fprintf(cFileID, '\t%s_binaryoutput output_%u;\n',self.codeoptions{k}.name,k);
-        fprintf(cFileID, '\t%s_info info_%u;\n\n',self.codeoptions{k}.name,k);
+        fprintf(cFileID, '\t%s %s_binaryparams params_%u;\n',static_keyword, self.codeoptions{k}.name,k);
+        fprintf(cFileID, '\t%s %s_binaryoutput output_%u;\n',static_keyword, self.codeoptions{k}.name,k);
+        fprintf(cFileID, '\t%s %s_info info_%u;\n\n',static_keyword, self.codeoptions{k}.name,k);
     end
 end
 if self.numSolvers == 1

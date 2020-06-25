@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.18
+- Added static keyword in variable declaration in generated interfaces and main solver
+- Added thread_local option in main solver file generation
+
 ## 0.1.17
 - updated interface to use library files instead of object files
 
