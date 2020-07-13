@@ -100,7 +100,7 @@ if exist( [cName '.c'], 'file' ) && exist( [simulinkName '.c'], 'file' )
         arch = ext(end-1:end); % mex extension ends with 32 or 64
         
         % figure our whether we need additional libraries for Intel
-        clientPath = fileparts(which('generateCode'));
+        clientPath = fileparts(which('FORCESversion'));
         intelLibsDir = [clientPath,filesep,'libs_Intel'];
         if( exist( intelLibsDir, 'dir' ) && ~isMinGW)
             % If subdirectory for specific architecture exisst, we need to
