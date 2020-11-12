@@ -169,7 +169,7 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
     end
 
     %% Assemble outputs
-    [sys,outputFORCES] = buildOutput( solverOutputs,solverVars,graphComponents,stages,sys,paramVars,yalmipParamMap );
+    [sys, outputFORCES] = buildOutput( solverOutputs,solverVars,graphComponents,stages,sys,paramVars,yalmipParamMap );
     assembleStagesTime = toc;
     fprintf('   [OK, %5.1f sec]\n', assembleStagesTime);
 
@@ -199,7 +199,7 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
         codeoptions{i} = default_codeoptions;
         codeoptions{i}.name = sprintf('internal_%s_%u',default_codeoptions.name,i);
         codeoptions{i}.nohash = 1; % added by AD to avoid problem - exeprimental
-        success = generateCode(stages{i},params{i},codeoptions{i},outputFORCES{i}) & success;
+        success = generateCode( stages{i},params{i},codeoptions{i},outputFORCES{i} ) & success;
     end
 
     if ~success
@@ -1036,49 +1036,6 @@ function [ k,quadIneq,Q,l,r ] = findOrCreateQuadraticInequality( rowIdx,quadIneq
 end
 
 
-function [ sys,outputFORCES ] = buildOutput( solverOutputs,solverVars,graphComponents,stages,sys,paramVars,yalmipParamMap )
-% Helper function that builds the output struct required for the FORCES
-% solver(s), an outputMap that allows to recover the wantend output
-% values from the solver output, an outputParamTable that allows the
-% usage of parameters in outputs
-
-    outputFORCES = {};
-    % we need to know which output to get from which solver
-    sys.outputMap = zeros(3,0); % 1st row: variable type (1=decision variable,2=parameter)
-    % 2nd row: index of solver/index of parameter value
-    % 3rd row: index of output/index of element inside value matrix
-
-    o = ones(numel(stages),1); % counter variable outputs
-    p = 1; % counter parameters
-    k = 1; % counter total number of outputs
-    for i=1:numel(solverOutputs)
-        outputVars = getvariables(solverOutputs{i});
-        sys.outputBase{i} = full(getbase(solverOutputs{i}));
-        sys.outputSize{i} = size(solverOutputs{i});
-        for j=1:length(outputVars)
-            idx = find(solverVars == outputVars(j),1);
-            if length(idx) == 1
-                [stage, state, component] = findVariableIndex(graphComponents,idx);
-                outputFORCES{component}(o(component)) = newOutput(sprintf('o_%u',o(component)), stage, state); %#ok<AGROW>
-                sys.outputMap(:,end+1) = [1; component; o(component)];
-                o(component) = o(component) + 1;
-            else
-                idx = find(paramVars == outputVars(j),1);
-                if length(idx) == 1
-                    sys.outputMap(:,end+1) = [2; yalmipParamMap(:,idx)];
-                    p = p+1;
-                else
-                    error('Output is not valid. Only linear combinations of optimization variables and parameters are allowed.')
-                end
-            end
-            k = k + 1;
-        end
-    end
-    sys.lengthOutput = k-1;
-    
-end
-
-
 function [] = checkQcqpForInfeasibility( qcqpParams,H,H_temp,Q,Q_temp,lb,ub )
 % Helper function that checks if the QCQP might be infeasible and warns
 % the user
@@ -1126,6 +1083,49 @@ function [] = checkQcqpForInfeasibility( qcqpParams,H,H_temp,Q,Q_temp,lb,ub )
             end
         end
     end
+    
+end
+
+
+function [ sys,outputFORCES ] = buildOutput( solverOutputs,solverVars,graphComponents,stages,sys,paramVars,yalmipParamMap )
+% Helper function that builds the output struct required for the FORCES
+% solver(s), an outputMap that allows to recover the wantend output
+% values from the solver output, an outputParamTable that allows the
+% usage of parameters in outputs
+
+    outputFORCES = {};
+    % we need to know which output to get from which solver
+    sys.outputMap = zeros(3,0); % 1st row: variable type (1=decision variable,2=parameter)
+    % 2nd row: index of solver/index of parameter value
+    % 3rd row: index of output/index of element inside value matrix
+
+    o = ones(numel(stages),1); % counter variable outputs
+    p = 1; % counter parameters
+    k = 1; % counter total number of outputs
+    for i=1:numel(solverOutputs)
+        outputVars = getvariables(solverOutputs{i});
+        sys.outputBase{i} = full(getbase(solverOutputs{i}));
+        sys.outputSize{i} = size(solverOutputs{i});
+        for j=1:length(outputVars)
+            idx = find(solverVars == outputVars(j),1);
+            if length(idx) == 1
+                [stage, state, component] = findVariableIndex(graphComponents,idx);
+                outputFORCES{component}(o(component)) = newOutput(sprintf('o_%u',o(component)), stage, state); %#ok<AGROW>
+                sys.outputMap(:,end+1) = [1; component; o(component)];
+                o(component) = o(component) + 1;
+            else
+                idx = find(paramVars == outputVars(j),1);
+                if length(idx) == 1
+                    sys.outputMap(:,end+1) = [2; yalmipParamMap(:,idx)];
+                    p = p+1;
+                else
+                    error('Output is not valid. Only linear combinations of optimization variables and parameters are allowed.')
+                end
+            end
+            k = k + 1;
+        end
+    end
+    sys.lengthOutput = k-1;
     
 end
 
