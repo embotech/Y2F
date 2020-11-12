@@ -79,14 +79,12 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
         error('YALMIP could not be found. Please make sure it is installed correctly.')
     end
 
-    % Prepare struct that is going to be converted into the optimizerFORCES
-    % class
+    % Prepare struct that is going to be converted into the optimizerFORCES class
     sys = struct();
     sys.outputIsCell = 1;
     
     [ codeoptions,parameters,solverOutputs,parameterNames,outputNames,sys ] = ...
         sanitizeInputData( codeoptions,parameters,solverOutputs,parameterNames,outputNames,sys, nargin,{inputname(4),inputname(5)} );
-
 
     %% Call YALMIP and convert QP into FORCES format
     disp('This is Y2F (v0.1.18), the YALMIP interface of FORCES PRO.');
@@ -170,7 +168,7 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
         end
     end
 
-    % Assemble outputs
+    %% Assemble outputs
     [sys,outputFORCES] = buildOutput( solverOutputs,solverVars,graphComponents,stages,sys,paramVars,yalmipParamMap );
     assembleStagesTime = toc;
     fprintf('   [OK, %5.1f sec]\n', assembleStagesTime);
@@ -208,7 +206,7 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
         error('Code generation was not successful');
     end
 
-    % Store temporary data in object
+    %% Store temporary data in object
     sys.stages = stages;
     sys.numSolvers = numel(stages);
     sys.params = params;
@@ -226,7 +224,7 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
 
     sys = class(sys,'optimizerFORCES');
 
-    % Generate MEX code that is called when the solver is used
+    %% Generate MEX code that is called when the solver is used
     disp('Generating C interface...');
     %generateSolverInterfaceCode(sys);
     generateCInterfaceCode(sys);
