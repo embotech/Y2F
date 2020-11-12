@@ -71,342 +71,241 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
 %
 % (c) Gian Ulli and embotech AG, Zurich, Switzerland, 2013-2020.
 
-disp('YALMIP-to-FORCES code generator')
-disp('-------------------------------')
+    disp('YALMIP-to-FORCES code generator')
+    disp('-------------------------------')
 
-% Check if YALMIP is installed
-if ~exist('optimizer','file')
-    error('YALMIP could not be found. Please make sure it is installed correctly.')
-end
-
-% We need all arguments
-switch nargin
-    case 0
-        error('Constraints not found')
-    case 1
-        error('Objective not found')
-    case 2
-        error('Solver options not found')
-    case 3
-        error('Parameter(s) not found')
-    case 4
-        error('Output(s) not found')
-end
-
-% Make valid solver name
-if ~verLessThan('matlab', '8.3')
-    codeoptions.name = matlab.lang.makeValidName(codeoptions.name);
-else
-    codeoptions.name = genvarname(codeoptions.name);
-end
-
-% We need parameters
-if isempty(parameters)
-    error('FORCES PRO does not support problems without parameters.');
-end
-
-% Read parameter names if they were passed along
-if nargin >= 6
-    if ~iscellstr(parameterNames) %#ok<ISCLSTR>
-        error('parameterNames needs to be a cell array of strings.')
+    % Check if YALMIP is installed
+    if ~exist('optimizer','file')
+        error('YALMIP could not be found. Please make sure it is installed correctly.')
     end
+
+    % Prepare struct that is going to be converted into the optimizerFORCES
+    % class
+    sys = struct;
+    sys.outputIsCell = 1;
     
-    % Fix names (make them valid and unique)
-    if ~verLessThan('matlab', '8.3')
-        parameterNames = matlab.lang.makeValidName(parameterNames);
-        parameterNames = matlab.lang.makeUniqueStrings(parameterNames);
-    else
-        parameterNames = genvarname(parameterNames);
+    [ codeoptions,parameters,solverOutputs,parameterNames,outputNames,sys ] = ...
+        sanitizeInputData( codeoptions,parameters,solverOutputs,parameterNames,outputNames,sys, nargin,{inputname(4),inputname(5)} );
+
+
+    %% Call YALMIP and convert QP into FORCES format
+    disp('This is Y2F (v0.1.18), the YALMIP interface of FORCES PRO.');
+    disp('For more information visit https://github.com/embotech/y2f');
+    fprintf('\nUsing YALMIP to convert problem into QP...')
+    tic;
+    [internalmodel,H,f,Aineq,bineq,Aeq,beq,lb,ub] = getQpAndModelFromYALMIP(constraint, objective);
+    yalmiptime=toc;
+    fprintf('   [OK, %5.1f sec]\n', yalmiptime);
+
+    % Check if matrices are numeric
+    if ~isnumeric(H) || ~isnumeric(f)
+        error('Y2F can only handle numeric inputs. There are non-numeric terms in the cost.')
     end
-elseif isa(solverOutputs,'sdpvar')
-    % Single parameter supplied, we might get its name!
-    name = inputname(4);
-    if ~isempty(name)
-        parameterNames = {name};
-    else
-        parameterNames = {};
-        warning('Y2F:noParameterNames',['No parameter names specified for solver. We recommend adding names for better code documentation. ' ...
-        'For more info type ''help optimizerFORCES''.']);
+    if ~isnumeric(Aineq) || ~isnumeric(bineq)
+        error('Y2F can only handle numeric inputs. There are non-numeric terms in the inequality contraints.')
     end
-else
-    parameterNames = {};
-    warning('Y2F:noParameterNames',['No parameter names specified for solver. We recommend adding names for better code documentation. ' ...
-        'For more info type ''help optimizerFORCES''.']);
-end
-
-% Read output names if they were passed along
-if nargin >= 7
-    if ~iscellstr(parameterNames) %#ok<ISCLSTR>
-        error('outputNames needs to be a cell array of strings.')
+    if ~isnumeric(Aeq) || ~isnumeric(beq)
+        error('Y2F can only handle numeric inputs. There are non-numeric terms in the equality contraints.')
     end
-    
-    % Fix names (make them valid and unique)
-    if ~verLessThan('matlab', '8.3')
-        outputNames = matlab.lang.makeValidName(outputNames);
-        outputNames = matlab.lang.makeUniqueStrings(outputNames);
-    else
-        outputNames = genvarname(outputNames);
+    if ~isnumeric(lb) || ~isnumeric(ub)
+        error('Y2F can only handle numeric inputs. There are non-numeric terms in the bounds.')
     end
-elseif isa(solverOutputs,'sdpvar')
-    % Single output supplied, we might get its name!
-    name = inputname(5);
-    if ~isempty(name)
-        outputNames = {name};
-    else
-        outputNames = {};
-        warning('Y2F:noOutputNames',['No output names specified for solver. We recommend adding names for better code documentation. ' ...
-        'For more info type ''help optimizerFORCES''.']);
+
+    % Check if matrices are real
+    if ~isreal(H) || ~isreal(f)
+        error('Y2F can only handle real inputs. There are complex terms in the cost.')
     end
-else
-    outputNames = {};
-    warning('Y2F:noOutputNames',['No output names specified for solver. We recommend adding names for better code documentation. ' ...
-        'For more info type ''help optimizerFORCES''.']);
-end
-
-% Create missing parameter names
-while numel(parameterNames) < numel(parameters)
-    parameterNames{end+1} = sprintf('param%u', numel(parameterNames)+1); %#ok<AGROW>
-end
-
-% We allow single parameters --> wrap them in a cell array
-if ~iscell(parameters) 
-    parameters = {parameters}; % put single param into cell array
-end
-
-% Prepare struct that is going to be converted into the optimizerFORCES
-% class
-sys = struct;
-
-sys.outputIsCell = 1;
-if ~iscell(solverOutputs)
-    solverOutputs = {solverOutputs};
-    sys.outputIsCell = 0;
-end
-
-% Create missing parameter names
-while numel(outputNames) < numel(solverOutputs)
-    outputNames{end+1} = sprintf('output%u', numel(outputNames)+1); %#ok<AGROW>
-end
-
-
-%% Call YALMIP and convert QP into FORCES format
-disp('This is Y2F (v0.1.18), the YALMIP interface of FORCES PRO.');
-disp('For more information visit https://github.com/embotech/y2f');
-fprintf('\nUsing YALMIP to convert problem into QP...')
-tic;
-[internalmodel,H,f,Aineq,bineq,Aeq,beq,lb,ub] = getQpAndModelFromYALMIP(constraint, objective);
-yalmiptime=toc;
-fprintf('   [OK, %5.1f sec]\n', yalmiptime);
-
-% Check if matrices are numeric
-if ~isnumeric(H) || ~isnumeric(f)
-    error('Y2F can only handle numeric inputs. There are non-numeric terms in the cost.')
-end
-if ~isnumeric(Aineq) || ~isnumeric(bineq)
-    error('Y2F can only handle numeric inputs. There are non-numeric terms in the inequality contraints.')
-end
-if ~isnumeric(Aeq) || ~isnumeric(beq)
-    error('Y2F can only handle numeric inputs. There are non-numeric terms in the equality contraints.')
-end
-if ~isnumeric(lb) || ~isnumeric(ub)
-    error('Y2F can only handle numeric inputs. There are non-numeric terms in the bounds.')
-end
-
-% Check if matrices are real
-if ~isreal(H) || ~isreal(f)
-    error('Y2F can only handle real inputs. There are complex terms in the cost.')
-end
-if ~isreal(Aineq) || ~isreal(bineq)
-    error('Y2F can only handle real inputs. There are complex terms in the inequality contraints.')
-end
-if ~isreal(Aeq) || ~isreal(beq)
-    error('Y2F can only handle real inputs. There are complex terms in the equality contraints.')
-end
-if ~isreal(lb) || ~isreal(ub)
-    error('Y2F can only handle real inputs. There are complex terms in the bounds.')
-end
-
-% Check if matrices are doubles
-if ~isa(H,'double') || ~isa(f,'double')
-    warning('Y2F:nonDoubleCost', 'Y2F can only handle inputs of type ''double''. The cost will be cast to ''double''.')
-    H = double(H);
-    f = double(f);
-end
-if ~isa(Aineq,'double') || ~isa(bineq,'double')
-    warning('Y2F:nonDoubleInequality', 'Y2F can only handle inputs of type ''double''. The inequality constraints will be cast to ''double''.')
-    Aineq = double(Aineq);
-    bineq = double(bineq);
-end
-if ~isa(Aeq,'double') || ~isa(beq,'double')
-    warning('Y2F:nonDoubleEquality', 'Y2F can only handle inputs of type ''double''. The equality constraints will be cast to ''double''.')
-    Aeq = double(Aeq);
-    beq = double(beq);
-end
-if ~isa(lb,'double') || ~isa(ub,'double')
-    warning('Y2F:nonDoubleBounds', 'Y2F can only handle inputs of type ''double''. The bounds will be cast to ''double''.')
-    lb = double(lb);
-    ub = double(ub);
-end
-
-%% Assemble parameters & convert quadratic variables
-% Quadratic inequalities are not recognized by YALMIP
-% Information is stored in internalmodel
-
-fprintf('Extract parameters and quadratic inequalities from YALMIP model...')
-tic;
-[sys,qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap,H,f,Aineq,bineq,Aeq,beq,lb,ub] = buildParamsAndQuadIneqs( parameters,sys,internalmodel,H,f,Aineq,bineq,Aeq,beq,lb,ub );
-extractStagesTime=toc;
-fprintf('   [OK, %5.1f sec]\n', extractStagesTime);
-
-%%
-
-fprintf('Assembling stages...')
-tic;
-% Construct matrices where parametric elements are == 1
-% This is necessary to build graph and recognise infeasible problems
-H_temp = H;
-H_temp([qcqpParams.H.maps2index]) = 1;
-Aineq_temp = Aineq;
-Aineq_temp([qcqpParams.Aineq.maps2index]) = 1;
-Aeq_temp = Aeq;
-Aeq_temp([qcqpParams.Aeq.maps2index]) = 1;
-Q_temp = Q;
-for i=1:numel(qcqpParams.Q)
-    Q_temp{qcqpParams.Q(i).maps2mat}(qcqpParams.Q(i).maps2index) = 1;
-end
-l_temp = l;
-for i=1:numel(qcqpParams.l)
-    l_temp(qcqpParams.l(i).maps2index,qcqpParams.l(i).maps2mat) = 1;
-end
-
-
-%% Warn the user if the problem is/might be infeasible
-checkQcqpForInfeasibility( qcqpParams,H,H_temp,Q,Q_temp,lb,ub );
-
-
-%% Generate standard stages
-% Construct (potentially multiple) path graphs from Qp
-
-% Compute decision variable indices that are needed in output (only
-% relevant for separable problems)
-outputIdx = [];
-for i=1:numel(solverOutputs)
-    outputVars = getvariables(solverOutputs{i});
-    outputIdx = [outputIdx find(ismember(solverVars, outputVars))]; %#ok<AGROW>
-end
-
-graphComponents = pathGraphsFromQcqp(H_temp,Aineq_temp,Aeq_temp,Q_temp,l_temp);
-[graphComponents, stages, params, standardParamValues,forcesParamMap] = ...
-    stagesFromPathGraphs(graphComponents,H,f,Aineq,bineq,Aeq,beq,l,Q,r,lb,ub,qcqpParams,yalmipParamMap,outputIdx);
-
-%% Assemble the rest of the FORCES parameters
-% Fake a parameter for each solver if there are none (we need one for FORCES)
-sys.solverHasParams = zeros(1,numel(stages));
-for i=1:numel(stages)
-    if isempty(params{i})
-        params{i}(1) = newParam('p',1,'cost.f');
-        standardParamValues{i} = stages{i}(1).cost.f;
-        stages{i}(1).cost.f = [];
-    else % count params
-        sys.solverHasParams(i) = 1;
+    if ~isreal(Aineq) || ~isreal(bineq)
+        error('Y2F can only handle real inputs. There are complex terms in the inequality contraints.')
     end
-end
+    if ~isreal(Aeq) || ~isreal(beq)
+        error('Y2F can only handle real inputs. There are complex terms in the equality contraints.')
+    end
+    if ~isreal(lb) || ~isreal(ub)
+        error('Y2F can only handle real inputs. There are complex terms in the bounds.')
+    end
 
-% Mark solvers that contain binary variables
-sys.solverIsBinary = zeros(1,numel(stages));
-if ~isempty(qcqpParams.bidx) 
+    % Check if matrices are doubles
+    if ~isa(H,'double') || ~isa(f,'double')
+        warning('Y2F:nonDoubleCost', 'Y2F can only handle inputs of type ''double''. The cost will be cast to ''double''.')
+        H = double(H);
+        f = double(f);
+    end
+    if ~isa(Aineq,'double') || ~isa(bineq,'double')
+        warning('Y2F:nonDoubleInequality', 'Y2F can only handle inputs of type ''double''. The inequality constraints will be cast to ''double''.')
+        Aineq = double(Aineq);
+        bineq = double(bineq);
+    end
+    if ~isa(Aeq,'double') || ~isa(beq,'double')
+        warning('Y2F:nonDoubleEquality', 'Y2F can only handle inputs of type ''double''. The equality constraints will be cast to ''double''.')
+        Aeq = double(Aeq);
+        beq = double(beq);
+    end
+    if ~isa(lb,'double') || ~isa(ub,'double')
+        warning('Y2F:nonDoubleBounds', 'Y2F can only handle inputs of type ''double''. The bounds will be cast to ''double''.')
+        lb = double(lb);
+        ub = double(ub);
+    end
+
+    %% Assemble parameters & convert quadratic variables
+    % Quadratic inequalities are not recognized by YALMIP
+    % Information is stored in internalmodel
+
+    fprintf('Extract parameters and quadratic inequalities from YALMIP model...')
+    tic;
+    [sys,qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap,H,f,Aineq,bineq,Aeq,beq,lb,ub] = buildParamsAndQuadIneqs( parameters,sys,internalmodel,H,f,Aineq,bineq,Aeq,beq,lb,ub );
+    extractStagesTime=toc;
+    fprintf('   [OK, %5.1f sec]\n', extractStagesTime);
+
+    %%
+
+    fprintf('Assembling stages...')
+    tic;
+    % Construct matrices where parametric elements are == 1
+    % This is necessary to build graph and recognise infeasible problems
+    H_temp = H;
+    H_temp([qcqpParams.H.maps2index]) = 1;
+    Aineq_temp = Aineq;
+    Aineq_temp([qcqpParams.Aineq.maps2index]) = 1;
+    Aeq_temp = Aeq;
+    Aeq_temp([qcqpParams.Aeq.maps2index]) = 1;
+    Q_temp = Q;
+    for i=1:numel(qcqpParams.Q)
+        Q_temp{qcqpParams.Q(i).maps2mat}(qcqpParams.Q(i).maps2index) = 1;
+    end
+    l_temp = l;
+    for i=1:numel(qcqpParams.l)
+        l_temp(qcqpParams.l(i).maps2index,qcqpParams.l(i).maps2mat) = 1;
+    end
+
+
+    %% Warn the user if the problem is/might be infeasible
+    checkQcqpForInfeasibility( qcqpParams,H,H_temp,Q,Q_temp,lb,ub );
+
+
+    %% Generate standard stages
+    % Construct (potentially multiple) path graphs from Qp
+
+    % Compute decision variable indices that are needed in output (only
+    % relevant for separable problems)
+    outputIdx = [];
+    for i=1:numel(solverOutputs)
+        outputVars = getvariables(solverOutputs{i});
+        outputIdx = [outputIdx find(ismember(solverVars, outputVars))]; %#ok<AGROW>
+    end
+
+    graphComponents = pathGraphsFromQcqp(H_temp,Aineq_temp,Aeq_temp,Q_temp,l_temp);
+    [graphComponents, stages, params, standardParamValues,forcesParamMap] = ...
+        stagesFromPathGraphs(graphComponents,H,f,Aineq,bineq,Aeq,beq,l,Q,r,lb,ub,qcqpParams,yalmipParamMap,outputIdx);
+
+    %% Assemble the rest of the FORCES parameters
+    % Fake a parameter for each solver if there are none (we need one for FORCES)
+    sys.solverHasParams = zeros(1,numel(stages));
     for i=1:numel(stages)
-        if any(ismember(cell2mat(graphComponents{i}.vertices),qcqpParams.bidx))
-            sys.solverIsBinary(i) = 1;
+        if isempty(params{i})
+            params{i}(1) = newParam('p',1,'cost.f');
+            standardParamValues{i} = stages{i}(1).cost.f;
+            stages{i}(1).cost.f = [];
+        else % count params
+            sys.solverHasParams(i) = 1;
         end
     end
-end
 
-% Assemble outputs
-[sys,outputFORCES] = buildOutput( solverOutputs,solverVars,graphComponents,stages,sys,paramVars,yalmipParamMap );
-
-assembleStagesTime=toc;
-fprintf('   [OK, %5.1f sec]\n', assembleStagesTime);
-
-%% Print stage sizes
-if numel(stages) == 1
-    fprintf('Found %u stages:\n', numel(stages{1}));
-    printStageSizes(stages{1},'  ');
-else  % we have multiple solvers
-    fprintf('The problem is separable. %u solvers are needed:\n', numel(stages));
-    for i=1:numel(stages)
-        fprintf('    - Solver %u has %u stages:\n', i, numel(stages{i}));
-        printStageSizes(stages{i},'        ');
+    % Mark solvers that contain binary variables
+    sys.solverIsBinary = zeros(1,numel(stages));
+    if ~isempty(qcqpParams.bidx) 
+        for i=1:numel(stages)
+            if any(ismember(cell2mat(graphComponents{i}.vertices),qcqpParams.bidx))
+                sys.solverIsBinary(i) = 1;
+            end
+        end
     end
-end
 
-%% Generate solver using FORCES
-disp('Generating solver using FORCES...')
+    % Assemble outputs
+    [sys,outputFORCES] = buildOutput( solverOutputs,solverVars,graphComponents,stages,sys,paramVars,yalmipParamMap );
 
-% set flag to let FORCES know that request came from Y2F
-codeoptions.interface = 'y2f';
+    assembleStagesTime=toc;
+    fprintf('   [OK, %5.1f sec]\n', assembleStagesTime);
 
-success = 1;
-default_codeoptions = codeoptions;
-codeoptions = cell(1,numel(stages));
-for i=1:numel(stages)
-    % new name for each solver
-    codeoptions{i} = default_codeoptions;
-    codeoptions{i}.name = sprintf('internal_%s_%u',default_codeoptions.name,i);
-    codeoptions{i}.nohash = 1; % added by AD to avoid problem - exeprimental
-    success = generateCode(stages{i},params{i},codeoptions{i},outputFORCES{i}) & success;
-end
+    %% Print stage sizes
+    if numel(stages) == 1
+        fprintf('Found %u stages:\n', numel(stages{1}));
+        printStageSizes(stages{1},'  ');
+    else  % we have multiple solvers
+        fprintf('The problem is separable. %u solvers are needed:\n', numel(stages));
+        for i=1:numel(stages)
+            fprintf('    - Solver %u has %u stages:\n', i, numel(stages{i}));
+            printStageSizes(stages{i},'        ');
+        end
+    end
 
-if ~success
-    error('Code generation was not successful');
-end
+    %% Generate solver using FORCES
+    disp('Generating solver using FORCES...')
 
-% Store temporary data in object
-sys.stages = stages;
-sys.numSolvers = numel(stages);
-sys.params = params;
-sys.paramNames = parameterNames;
-sys.outputNames = outputNames;
-sys.outputFORCES = outputFORCES;
-sys.qcqpParams = qcqpParams;
-sys.standardParamValues = standardParamValues;
-sys.solverVars = solverVars;
-sys.parameters = parameters;
-sys.forcesParamMap = forcesParamMap;
-sys.codeoptions = codeoptions;
-sys.default_codeoptions = default_codeoptions;
-sys.interfaceFunction = str2func(default_codeoptions.name);
+    % set flag to let FORCES know that request came from Y2F
+    codeoptions.interface = 'y2f';
 
-sys = class(sys,'optimizerFORCES');
+    success = 1;
+    default_codeoptions = codeoptions;
+    codeoptions = cell(1,numel(stages));
+    for i=1:numel(stages)
+        % new name for each solver
+        codeoptions{i} = default_codeoptions;
+        codeoptions{i}.name = sprintf('internal_%s_%u',default_codeoptions.name,i);
+        codeoptions{i}.nohash = 1; % added by AD to avoid problem - exeprimental
+        success = generateCode(stages{i},params{i},codeoptions{i},outputFORCES{i}) & success;
+    end
 
-% Generate MEX code that is called when the solver is used
-disp('Generating C interface...');
-%generateSolverInterfaceCode(sys);
-generateCInterfaceCode(sys);
-generateMEXInterfaceCode(sys);
-generateSimulinkInterfaceCode(sys);
+    if ~success
+        error('Code generation was not successful');
+    end
 
-% Compile MEX code
-disp('Compiling MEX code for solver interface...');
+    % Store temporary data in object
+    sys.stages = stages;
+    sys.numSolvers = numel(stages);
+    sys.params = params;
+    sys.paramNames = parameterNames;
+    sys.outputNames = outputNames;
+    sys.outputFORCES = outputFORCES;
+    sys.qcqpParams = qcqpParams;
+    sys.standardParamValues = standardParamValues;
+    sys.solverVars = solverVars;
+    sys.parameters = parameters;
+    sys.forcesParamMap = forcesParamMap;
+    sys.codeoptions = codeoptions;
+    sys.default_codeoptions = default_codeoptions;
+    sys.interfaceFunction = str2func(default_codeoptions.name);
 
-compileSolverInterfaceCode(sys);
+    sys = class(sys,'optimizerFORCES');
 
-% Generate help file
-disp('Writing help file...');
+    % Generate MEX code that is called when the solver is used
+    disp('Generating C interface...');
+    %generateSolverInterfaceCode(sys);
+    generateCInterfaceCode(sys);
+    generateMEXInterfaceCode(sys);
+    generateSimulinkInterfaceCode(sys);
 
-generateHelp(sys);
+    % Compile MEX code
+    disp('Compiling MEX code for solver interface...');
 
-if (~isfield(default_codeoptions,'BuildSimulinkBlock') || default_codeoptions.BuildSimulinkBlock ~= 0)
-    % Compile Simulink code (is optional)
-    disp('Compiling Simulink code for solver interface...');
+    compileSolverInterfaceCode(sys);
 
-    compileSimulinkInterfaceCode(sys);
+    % Generate help file
+    disp('Writing help file...');
 
-    % Compile Simulink code
-    disp('Generating Simulink Block...');
+    generateHelp(sys);
 
-    generateSimulinkBlock(sys);
-end
+    if (~isfield(default_codeoptions,'BuildSimulinkBlock') || default_codeoptions.BuildSimulinkBlock ~= 0)
+        % Compile Simulink code (is optional)
+        disp('Compiling Simulink code for solver interface...');
+
+        compileSimulinkInterfaceCode(sys);
+
+        % Compile Simulink code
+        disp('Generating Simulink Block...');
+
+        generateSimulinkBlock(sys);
+    end
 
 end
 
@@ -414,6 +313,115 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % HELPER FUNCTIONS
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+function [ codeoptions,parameters,solverOutputs,parameterNames,outputNames,sys ] = sanitizeInputData( codeoptions,parameters,solverOutputs,parameterNames,outputNames,sys, nArgIn,inputNames )
+
+    % We need all arguments
+    switch nArgIn
+        case 0
+            error('Constraints not found')
+        case 1
+            error('Objective not found')
+        case 2
+            error('Solver options not found')
+        case 3
+            error('Parameter(s) not found')
+        case 4
+            error('Output(s) not found')
+    end
+
+    % Make valid solver name
+    if ~verLessThan('matlab', '8.3')
+        codeoptions.name = matlab.lang.makeValidName(codeoptions.name);
+    else
+        codeoptions.name = genvarname(codeoptions.name);
+    end
+
+    % We need parameters
+    if isempty(parameters)
+        error('FORCES PRO does not support problems without parameters.');
+    end
+
+    % Read parameter names if they were passed along
+    if (nArgIn >= 6)
+        if ~iscellstr(parameterNames) %#ok<ISCLSTR>
+            error('parameterNames needs to be a cell array of strings.')
+        end
+
+        % Fix names (make them valid and unique)
+        if ~verLessThan('matlab', '8.3')
+            parameterNames = matlab.lang.makeValidName(parameterNames);
+            parameterNames = matlab.lang.makeUniqueStrings(parameterNames);
+        else
+            parameterNames = genvarname(parameterNames);
+        end
+    elseif isa(solverOutputs,'sdpvar')
+        % Single parameter supplied, we might get its name!
+        name = inputNames{1};
+        if ~isempty(name)
+            parameterNames = {name};
+        else
+            parameterNames = {};
+            warning('Y2F:noParameterNames',['No parameter names specified for solver. We recommend adding names for better code documentation. ' ...
+            'For more info type ''help optimizerFORCES''.']);
+        end
+    else
+        parameterNames = {};
+        warning('Y2F:noParameterNames',['No parameter names specified for solver. We recommend adding names for better code documentation. ' ...
+            'For more info type ''help optimizerFORCES''.']);
+    end
+
+    % Read output names if they were passed along
+    if (nArgIn >= 7)
+        if ~iscellstr(parameterNames) %#ok<ISCLSTR>
+            error('outputNames needs to be a cell array of strings.')
+        end
+
+        % Fix names (make them valid and unique)
+        if ~verLessThan('matlab', '8.3')
+            outputNames = matlab.lang.makeValidName(outputNames);
+            outputNames = matlab.lang.makeUniqueStrings(outputNames);
+        else
+            outputNames = genvarname(outputNames);
+        end
+    elseif isa(solverOutputs,'sdpvar')
+        % Single output supplied, we might get its name!
+        name = inputNames{2};
+        if ~isempty(name)
+            outputNames = {name};
+        else
+            outputNames = {};
+            warning('Y2F:noOutputNames',['No output names specified for solver. We recommend adding names for better code documentation. ' ...
+            'For more info type ''help optimizerFORCES''.']);
+        end
+    else
+        outputNames = {};
+        warning('Y2F:noOutputNames',['No output names specified for solver. We recommend adding names for better code documentation. ' ...
+            'For more info type ''help optimizerFORCES''.']);
+    end
+
+    % Create missing parameter names
+    while numel(parameterNames) < numel(parameters)
+        parameterNames{end+1} = sprintf('param%u', numel(parameterNames)+1); %#ok<AGROW>
+    end
+
+    % We allow single parameters --> wrap them in a cell array
+    if ~iscell(parameters) 
+        parameters = {parameters}; % put single param into cell array
+    end
+
+    if ~iscell(solverOutputs)
+        solverOutputs = {solverOutputs};
+        sys.outputIsCell = 0;
+    end
+
+    % Create missing parameter names
+    while numel(outputNames) < numel(solverOutputs)
+        outputNames{end+1} = sprintf('output%u', numel(outputNames)+1); %#ok<AGROW>
+    end
+
+end
+
 
 function [internalmodel,H,f,Aineq,bineq,Aeq,beq,lb,ub] = getQpAndModelFromYALMIP(constraint, objective)
 % Helper function that uses YALMIP to create Qp from user's constraints
