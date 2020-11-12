@@ -81,7 +81,7 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
 
     % Prepare struct that is going to be converted into the optimizerFORCES
     % class
-    sys = struct;
+    sys = struct();
     sys.outputIsCell = 1;
     
     [ codeoptions,parameters,solverOutputs,parameterNames,outputNames,sys ] = ...
@@ -93,58 +93,58 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
     disp('For more information visit https://github.com/embotech/y2f');
     fprintf('\nUsing YALMIP to convert problem into QP...')
     tic;
-    [internalmodel,H,f,Aineq,bineq,Aeq,beq,lb,ub] = getQpAndModelFromYALMIP(constraint, objective);
-    yalmiptime=toc;
-    fprintf('   [OK, %5.1f sec]\n', yalmiptime);
+    [ internalmodel,qpData ] = getQpAndModelFromYALMIP( constraint,objective );
+    yalmipTime = toc;
+    fprintf('   [OK, %5.1f sec]\n', yalmipTime);
 
     % Check if matrices are numeric
-    if ~isnumeric(H) || ~isnumeric(f)
+    if ~isnumeric(qpData.H) || ~isnumeric(qpData.f)
         error('Y2F can only handle numeric inputs. There are non-numeric terms in the cost.')
     end
-    if ~isnumeric(Aineq) || ~isnumeric(bineq)
+    if ~isnumeric(qpData.Aineq) || ~isnumeric(qpData.bineq)
         error('Y2F can only handle numeric inputs. There are non-numeric terms in the inequality contraints.')
     end
-    if ~isnumeric(Aeq) || ~isnumeric(beq)
+    if ~isnumeric(qpData.Aeq) || ~isnumeric(qpData.beq)
         error('Y2F can only handle numeric inputs. There are non-numeric terms in the equality contraints.')
     end
-    if ~isnumeric(lb) || ~isnumeric(ub)
+    if ~isnumeric(qpData.lb) || ~isnumeric(qpData.ub)
         error('Y2F can only handle numeric inputs. There are non-numeric terms in the bounds.')
     end
 
     % Check if matrices are real
-    if ~isreal(H) || ~isreal(f)
+    if ~isreal(qpData.H) || ~isreal(qpData.f)
         error('Y2F can only handle real inputs. There are complex terms in the cost.')
     end
-    if ~isreal(Aineq) || ~isreal(bineq)
+    if ~isreal(qpData.Aineq) || ~isreal(qpData.bineq)
         error('Y2F can only handle real inputs. There are complex terms in the inequality contraints.')
     end
-    if ~isreal(Aeq) || ~isreal(beq)
+    if ~isreal(qpData.Aeq) || ~isreal(qpData.beq)
         error('Y2F can only handle real inputs. There are complex terms in the equality contraints.')
     end
-    if ~isreal(lb) || ~isreal(ub)
+    if ~isreal(qpData.lb) || ~isreal(qpData.ub)
         error('Y2F can only handle real inputs. There are complex terms in the bounds.')
     end
 
     % Check if matrices are doubles
-    if ~isa(H,'double') || ~isa(f,'double')
+    if ~isa(qpData.H,'double') || ~isa(qpData.f,'double')
         warning('Y2F:nonDoubleCost', 'Y2F can only handle inputs of type ''double''. The cost will be cast to ''double''.')
-        H = double(H);
-        f = double(f);
+        qpData.H = double(qpData.H);
+        qpData.f = double(qpData.f);
     end
-    if ~isa(Aineq,'double') || ~isa(bineq,'double')
+    if ~isa(qpData.Aineq,'double') || ~isa(qpData.bineq,'double')
         warning('Y2F:nonDoubleInequality', 'Y2F can only handle inputs of type ''double''. The inequality constraints will be cast to ''double''.')
-        Aineq = double(Aineq);
-        bineq = double(bineq);
+        qpData.Aineq = double(qpData.Aineq);
+        qpData.bineq = double(qpData.bineq);
     end
-    if ~isa(Aeq,'double') || ~isa(beq,'double')
+    if ~isa(qpData.Aeq,'double') || ~isa(qpData.beq,'double')
         warning('Y2F:nonDoubleEquality', 'Y2F can only handle inputs of type ''double''. The equality constraints will be cast to ''double''.')
-        Aeq = double(Aeq);
-        beq = double(beq);
+        qpData.Aeq = double(qpData.Aeq);
+        qpData.beq = double(qpData.beq);
     end
-    if ~isa(lb,'double') || ~isa(ub,'double')
+    if ~isa(qpData.lb,'double') || ~isa(qpData.ub,'double')
         warning('Y2F:nonDoubleBounds', 'Y2F can only handle inputs of type ''double''. The bounds will be cast to ''double''.')
-        lb = double(lb);
-        ub = double(ub);
+        qpData.lb = double(qpData.lb);
+        qpData.ub = double(qpData.ub);
     end
 
     %% Assemble parameters & convert quadratic variables
@@ -153,21 +153,20 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
 
     fprintf('Extract parameters and quadratic inequalities from YALMIP model...')
     tic;
-    [sys,qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap,H,f,Aineq,bineq,Aeq,beq,lb,ub] = buildParamsAndQuadIneqs( parameters,sys,internalmodel,H,f,Aineq,bineq,Aeq,beq,lb,ub );
-    extractStagesTime=toc;
+    [ sys,qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap,qpData ] = buildParamsAndQuadIneqs( parameters,sys,internalmodel,qpData );
+    extractStagesTime = toc;
     fprintf('   [OK, %5.1f sec]\n', extractStagesTime);
 
     %%
-
     fprintf('Assembling stages...')
     tic;
     % Construct matrices where parametric elements are == 1
     % This is necessary to build graph and recognise infeasible problems
-    H_temp = H;
+    H_temp = qpData.H;
     H_temp([qcqpParams.H.maps2index]) = 1;
-    Aineq_temp = Aineq;
+    Aineq_temp = qpData.Aineq;
     Aineq_temp([qcqpParams.Aineq.maps2index]) = 1;
-    Aeq_temp = Aeq;
+    Aeq_temp = qpData.Aeq;
     Aeq_temp([qcqpParams.Aeq.maps2index]) = 1;
     Q_temp = Q;
     for i=1:numel(qcqpParams.Q)
@@ -178,10 +177,8 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
         l_temp(qcqpParams.l(i).maps2index,qcqpParams.l(i).maps2mat) = 1;
     end
 
-
     %% Warn the user if the problem is/might be infeasible
-    checkQcqpForInfeasibility( qcqpParams,H,H_temp,Q,Q_temp,lb,ub );
-
+    checkQcqpForInfeasibility( qcqpParams,qpData.H,H_temp,Q,Q_temp,qpData.lb,qpData.ub );
 
     %% Generate standard stages
     % Construct (potentially multiple) path graphs from Qp
@@ -194,9 +191,9 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
         outputIdx = [outputIdx find(ismember(solverVars, outputVars))]; %#ok<AGROW>
     end
 
-    graphComponents = pathGraphsFromQcqp(H_temp,Aineq_temp,Aeq_temp,Q_temp,l_temp);
+    graphComponents = pathGraphsFromQcqp( H_temp,Aineq_temp,Aeq_temp,Q_temp,l_temp );
     [graphComponents, stages, params, standardParamValues,forcesParamMap] = ...
-        stagesFromPathGraphs(graphComponents,H,f,Aineq,bineq,Aeq,beq,l,Q,r,lb,ub,qcqpParams,yalmipParamMap,outputIdx);
+        stagesFromPathGraphs( graphComponents,qpData.H,qpData.f,qpData.Aineq,qpData.bineq,qpData.Aeq,qpData.beq,l,Q,r,qpData.lb,qpData.ub,qcqpParams,yalmipParamMap,outputIdx );
 
     %% Assemble the rest of the FORCES parameters
     % Fake a parameter for each solver if there are none (we need one for FORCES)
@@ -223,8 +220,7 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
 
     % Assemble outputs
     [sys,outputFORCES] = buildOutput( solverOutputs,solverVars,graphComponents,stages,sys,paramVars,yalmipParamMap );
-
-    assembleStagesTime=toc;
+    assembleStagesTime = toc;
     fprintf('   [OK, %5.1f sec]\n', assembleStagesTime);
 
     %% Print stage sizes
@@ -423,7 +419,7 @@ function [ codeoptions,parameters,solverOutputs,parameterNames,outputNames,sys ]
 end
 
 
-function [internalmodel,H,f,Aineq,bineq,Aeq,beq,lb,ub] = getQpAndModelFromYALMIP(constraint, objective)
+function [ internalmodel,qpData ] = getQpAndModelFromYALMIP( constraint,objective )
 % Helper function that uses YALMIP to create Qp from user's constraints
 % and objective. Parameters and quadratic constraints are ignored for
 % now and handled later on.
@@ -445,37 +441,38 @@ function [internalmodel,H,f,Aineq,bineq,Aeq,beq,lb,ub] = getQpAndModelFromYALMIP
     end
 
     % Get matrices from quadprog model
-    H = model.Q;
-    f = model.c;
-    Aineq = model.A;
-    bineq = model.b;
-    Aeq = model.Aeq;
-    beq = model.beq;
-    lb = model.lb;
-    ub = model.ub;
+    qpData = struct();
+    qpData.H = model.Q;
+    qpData.f = model.c;
+    qpData.Aineq = model.A;
+    qpData.bineq = model.b;
+    qpData.Aeq = model.Aeq;
+    qpData.beq = model.beq;
+    qpData.lb = model.lb;
+    qpData.ub = model.ub;
 
     % YALMIP doesn't always recognize bounds as such (and makes them
     % inequalities) --> we have to convert them
     bounds_idx = []; % remember to delete these
-    for i=1:size(Aineq,1)
-        vars = find(Aineq(i,:)); % variables used in inequality
+    for i=1:size(qpData.Aineq,1)
+        vars = find(qpData.Aineq(i,:)); % variables used in inequality
         if length(vars) == 1 && internalmodel.variabletype(vars) == 0 % a single linear variable
             % we can make a bound out of this
             bounds_idx(end+1) = i; %#ok<AGROW>
-            if Aineq(i,vars) > 0 % upper bound
-                ub(vars) = min(ub(vars),bineq(i)/Aineq(i,vars));
+            if qpData.Aineq(i,vars) > 0 % upper bound
+                qpData.ub(vars) = min(qpData.ub(vars),qpData.bineq(i)/qpData.Aineq(i,vars));
             else % < 0 --> lower bound
-                lb(vars) = max(lb(vars),bineq(i)/Aineq(i,vars));
+                qpData.lb(vars) = max(qpData.lb(vars),qpData.bineq(i)/qpData.Aineq(i,vars));
             end
         end
     end
-    Aineq(bounds_idx,:) = [];
-    bineq(bounds_idx) = [];
+    qpData.Aineq(bounds_idx,:) = [];
+    qpData.bineq(bounds_idx) = [];
 
 end
 
 
-function [ sys,qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap,H,f,Aineq,bineq,Aeq,beq,lb,ub ] = buildParamsAndQuadIneqs( parameters,sys,internalmodel,H,f,Aineq,bineq,Aeq,beq,lb,ub )
+function [ sys,qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap,qpData ] = buildParamsAndQuadIneqs( parameters,sys,internalmodel,qpData )
 % Helper function that builds QCQp parameter list and recognises
 % quadratic inequalities
 
@@ -555,7 +552,7 @@ function [ sys,qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap,H,f,Aineq,bi
         if binary
             qcqpParams.bidx(end+1) = i;
 
-            if lb(i) ~= 0 || ub(i) ~= 1
+            if qpData.lb(i) ~= 0 || qpData.ub(i) ~= 1
                 error('No integer variables other than binary supported.');
             end
         end
@@ -576,37 +573,37 @@ function [ sys,qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap,H,f,Aineq,bi
             removeIdx = [removeIdx i]; %#ok<AGROW>
 
             % Check if parameter appears in H --> put into f
-            rows = find(H(:,i));
+            rows = find(qpData.H(:,i));
             rows = rows(rows ~= i); % param*param just adds a constant term to cost
             for row=rows'
                 if ~any(paramVars == internalmodel.used_variables(row)) % param1*param2 just adds a constant term to cost
-                    qcqpParams.f(end+1) = newAdditiveQcqpParam(row,p_idx,1,0.5*H(row,i));
+                    qcqpParams.f(end+1) = newAdditiveQcqpParam(row,p_idx,1,0.5*qpData.H(row,i));
                 end
             end
-            cols = find(H(i,:));
+            cols = find(qpData.H(i,:));
             cols = cols(cols ~= i); % param*param just adds a constant term to cost
             for col=cols
                 if ~any(paramVars == internalmodel.used_variables(col)) % param1*param2 just adds a constant term to cost
-                    qcqpParams.f(end+1) = newAdditiveQcqpParam(col,p_idx,1,0.5*H(i,col));
+                    qcqpParams.f(end+1) = newAdditiveQcqpParam(col,p_idx,1,0.5*qpData.H(i,col));
                 end
             end
 
             % We can ignore it if param appears in f (just a constant term)
 
             % Check if parameter is used in Aineq --> add to bineq
-            rows = find(Aineq(:,i));
+            rows = find(qpData.Aineq(:,i));
             for row=rows'
-                qcqpParams.bineq(end+1) = newAdditiveQcqpParam(row,p_idx,1,-Aineq(row,i));
+                qcqpParams.bineq(end+1) = newAdditiveQcqpParam(row,p_idx,1,-qpData.Aineq(row,i));
             end
 
             % Check if parameter is used in Aeq --> add to beq
-            rows = find(Aeq(:,i));
+            rows = find(qpData.Aeq(:,i));
             for row=rows'
-                qcqpParams.beq(end+1) = newAdditiveQcqpParam(row,p_idx,1,-Aeq(row,i));
+                qcqpParams.beq(end+1) = newAdditiveQcqpParam(row,p_idx,1,-qpData.Aeq(row,i));
             end
 
             % Check bounds
-            if lb(i) ~= -Inf || ub(i) ~= Inf
+            if qpData.lb(i) ~= -Inf || qpData.ub(i) ~= Inf
                 beep;
                 warning('Y2F:parameterBounds','Bounds on parameters have no effect.')
             end
@@ -635,31 +632,31 @@ function [ sys,qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap,H,f,Aineq,bi
                     removeIdx = [removeIdx i]; %#ok<AGROW>
 
                     % If it appears in the linear cost --> move it
-                    if f(i) ~= 0
-                        H(v_idx,v_idx) = H(v_idx,v_idx) + 2*f(i);
+                    if qpData.f(i) ~= 0
+                        qpData.H(v_idx,v_idx) = qpData.H(v_idx,v_idx) + 2*qpData.f(i);
                     end
 
                     % Cannot appear in quadratic cost
-                    if nnz(H(i,:)) > 0 || nnz(H(:,i)) > 0
+                    if nnz(qpData.H(i,:)) > 0 || nnz(qpData.H(:,i)) > 0
                         error('Non-quadratic term appears in cost.')
                     end
 
                     % Cannot appear in equalities
-                    if nnz(Aeq(:,i)) > 0
+                    if nnz(qpData.Aeq(:,i)) > 0
                         error('Quadratic equalities are not supported.')
                     end
 
                     % Check bounds
-                    if lb(i) ~= -Inf || ub(i) ~= Inf
+                    if qpData.lb(i) ~= -Inf || qpData.ub(i) ~= Inf
                         beep;
                         warning('Y2F:quadraticTermBounds','Bounds on quadratic terms have no effect.')
                     end
 
                     % Check if variable is used in Aineq --> put in quad. ineq.
-                    rows = find(Aineq(:,i));
+                    rows = find(qpData.Aineq(:,i));
                     for row=rows'
                         [k,quadIneq,Q,l,r] = findOrCreateQuadraticInequality(row,quadIneq,Q,l,r);
-                        Q{k}(v_idx,v_idx) = Aineq(row,i);
+                        Q{k}(v_idx,v_idx) = qpData.Aineq(row,i);
                     end
 
                     % Is it bilinearly dependent!
@@ -678,33 +675,33 @@ function [ sys,qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap,H,f,Aineq,bi
                         removeIdx = [removeIdx i]; %#ok<AGROW>
 
                         % If it appears in the linear cost --> move it
-                        if f(i) ~= 0
-                            H(deps_idx(1),deps_idx(2)) = H(deps_idx(1),deps_idx(2)) + f(i);
-                            H(deps_idx(2),deps_idx(1)) = H(deps_idx(2),deps_idx(1)) + f(i);
+                        if qpData.f(i) ~= 0
+                            qpData.H(deps_idx(1),deps_idx(2)) = qpData.H(deps_idx(1),deps_idx(2)) + qpData.f(i);
+                            qpData.H(deps_idx(2),deps_idx(1)) = qpData.H(deps_idx(2),deps_idx(1)) + qpData.f(i);
                         end
 
                         % Cannot appear in quadratic cost
-                        if nnz(H(i,:)) > 0 || nnz(H(:,i)) > 0
+                        if nnz(qpData.H(i,:)) > 0 || nnz(qpData.H(:,i)) > 0
                             error('Non-quadratic term appears in cost.')
                         end
 
                         % Cannot appear in equalities
-                        if nnz(Aeq(:,i)) > 0
+                        if nnz(qpData.Aeq(:,i)) > 0
                             error('Bilinear equalities are not supported.')
                         end
 
                         % Check bounds
-                        if lb(i) ~= -Inf || ub(i) ~= Inf
+                        if qpData.lb(i) ~= -Inf || qpData.ub(i) ~= Inf
                             beep;
                             warning('Y2F:bilinearTermBounds','Bounds on bilinear terms have no effect.')
                         end
 
                         % Check if variable is used in Aineq --> put in quad. ineq.
-                        rows = find(Aineq(:,i));
+                        rows = find(qpData.Aineq(:,i));
                         for row=rows'
                             [k,quadIneq,Q,l,r] = findOrCreateQuadraticInequality(row,quadIneq,Q,l,r);
-                            Q{k}(deps_idx(1),deps_idx(2)) = 0.5*Aineq(row,i);
-                            Q{k}(deps_idx(2),deps_idx(1)) = 0.5*Aineq(row,i);
+                            Q{k}(deps_idx(1),deps_idx(2)) = 0.5*qpData.Aineq(row,i);
+                            Q{k}(deps_idx(2),deps_idx(1)) = 0.5*qpData.Aineq(row,i);
                         end
 
                     else % a parameter is involed
@@ -730,28 +727,28 @@ function [ sys,qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap,H,f,Aineq,bi
                         removeIdx = [removeIdx i]; %#ok<AGROW>
 
                         % Does bilinear combo influence cost?
-                        if f(i) ~= 0
-                            qcqpParams.f(end+1) = newAdditiveQcqpParam(v_idx,p_idx,1,f(i));
+                        if qpData.f(i) ~= 0
+                            qcqpParams.f(end+1) = newAdditiveQcqpParam(v_idx,p_idx,1,qpData.f(i));
                         end
 
-                        if any(H(:,i)) || any(H(i,:))
+                        if any(qpData.H(:,i)) || any(qpData.H(i,:))
                             error('Parameters can only be used affinely.')
                         end
 
                         % Check if parameter is used in Aineq
-                        rows = find(Aineq(:,i));
+                        rows = find(qpData.Aineq(:,i));
                         for row=rows'
-                            qcqpParams.Aineq(end+1) = newAdditiveQcqpParam(sub2ind(size(Aineq),row,v_idx),p_idx,1,Aineq(row,i));
+                            qcqpParams.Aineq(end+1) = newAdditiveQcqpParam(sub2ind(size(qpData.Aineq),row,v_idx),p_idx,1,qpData.Aineq(row,i));
                         end
 
                         % Check if parameter is used in Aeq
-                        rows = find(Aeq(:,i));
+                        rows = find(qpData.Aeq(:,i));
                         for row=rows'
-                            qcqpParams.Aeq(end+1) = newAdditiveQcqpParam(sub2ind(size(Aeq),row,v_idx),p_idx,1,Aeq(row,i));
+                            qcqpParams.Aeq(end+1) = newAdditiveQcqpParam(sub2ind(size(qpData.Aeq),row,v_idx),p_idx,1,qpData.Aeq(row,i));
                         end
 
                         % Check bounds
-                        if lb(i) ~= -Inf || ub(i) ~= Inf
+                        if qpData.lb(i) ~= -Inf || qpData.ub(i) ~= Inf
                             beep;
                             warning('Y2F:bilinearTermBounds','Bounds on bilinear terms have no effect.')
                         end
@@ -805,36 +802,36 @@ function [ sys,qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap,H,f,Aineq,bi
                 % Variable is parameter --> remove it
                 removeIdx = [removeIdx i]; %#ok<AGROW>
 
-                if f(i) ~= 0 % pseudo-variable affects cost --> param in H
-                    qcqpParams.H(end+1) = newAdditiveQcqpParam(sub2ind(size(H),v1_idx,v2_idx),p_idx,1,f(i));
-                    qcqpParams.H(end+1) = newAdditiveQcqpParam(sub2ind(size(H),v2_idx,v1_idx),p_idx,1,f(i));
+                if qpData.f(i) ~= 0 % pseudo-variable affects cost --> param in H
+                    qcqpParams.H(end+1) = newAdditiveQcqpParam(sub2ind(size(qpData.H),v1_idx,v2_idx),p_idx,1,qpData.f(i));
+                    qcqpParams.H(end+1) = newAdditiveQcqpParam(sub2ind(size(qpData.H),v2_idx,v1_idx),p_idx,1,qpData.f(i));
                 end
 
                 % Cannot appear in quadratic cost
-                if nnz(H(i,:)) > 0 || nnz(H(:,i)) > 0
+                if nnz(qpData.H(i,:)) > 0 || nnz(qpData.H(:,i)) > 0
                     error('Non-quadratic term appears in cost.')
                 end
 
                 % Cannot appear in equalities
-                if nnz(Aeq(:,i)) > 0
+                if nnz(qpData.Aeq(:,i)) > 0
                     error('Nonlinear equalities are not allowed.')
                 end
 
                 % Check bounds
-                if lb(i) ~= -Inf || ub(i) ~= Inf
+                if qpData.lb(i) ~= -Inf || qpData.ub(i) ~= Inf
                     beep;
                     warning('Y2F:nonlinearTermBounds','Bounds on nonlinear terms have no effect.')
                 end
 
                 % Check inequalities
-                rows = find(Aineq(:,i));
+                rows = find(qpData.Aineq(:,i));
                 for row=rows'
                     [k,quadIneq,Q,l,r] = findOrCreateQuadraticInequality(row,quadIneq,Q,l,r);
                     if v1_idx ~= v2_idx % make sure Q is symmetric
-                        qcqpParams.Q(end+1) = newAdditiveQcqpParam(sub2ind(size(Q{k}),v1_idx,v2_idx),p_idx,k,0.5*Aineq(row,i));
-                        qcqpParams.Q(end+1) = newAdditiveQcqpParam(sub2ind(size(Q{k}),v2_idx,v1_idx),p_idx,k,0.5*Aineq(row,i));
+                        qcqpParams.Q(end+1) = newAdditiveQcqpParam(sub2ind(size(Q{k}),v1_idx,v2_idx),p_idx,k,0.5*qpData.Aineq(row,i));
+                        qcqpParams.Q(end+1) = newAdditiveQcqpParam(sub2ind(size(Q{k}),v2_idx,v1_idx),p_idx,k,0.5*qpData.Aineq(row,i));
                     else
-                        qcqpParams.Q(end+1) = newAdditiveQcqpParam(sub2ind(size(Q{k}),v1_idx,v1_idx),p_idx,k,Aineq(row,i));
+                        qcqpParams.Q(end+1) = newAdditiveQcqpParam(sub2ind(size(Q{k}),v1_idx,v1_idx),p_idx,k,qpData.Aineq(row,i));
                     end
                 end
             else
@@ -854,13 +851,13 @@ function [ sys,qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap,H,f,Aineq,bi
     end
 
     % Remove parameter indices from equations
-    H(removeIdx,:) = [];
-    H(:,removeIdx) = [];
-    f(removeIdx) = [];
-    Aineq(:,removeIdx) = [];
-    Aeq(:,removeIdx) = [];
-    lb(removeIdx) = [];
-    ub(removeIdx) = [];
+    qpData.H(removeIdx,:) = [];
+    qpData.H(:,removeIdx) = [];
+    qpData.f(removeIdx) = [];
+    qpData.Aineq(:,removeIdx) = [];
+    qpData.Aeq(:,removeIdx) = [];
+    qpData.lb(removeIdx) = [];
+    qpData.ub(removeIdx) = [];
     if ~isempty(Q)
         for k=1:numel(Q)
             Q{k}(removeIdx,:) = []; %#ok<AGROW>
@@ -871,19 +868,19 @@ function [ sys,qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap,H,f,Aineq,bi
 
     % Shift indices of parameters
     for i=1:numel(qcqpParams.H)
-        [row,col] = ind2sub(size(H)+length(removeIdx),qcqpParams.H(i).maps2index);
-        qcqpParams.H(i).maps2index = sub2ind(size(H),row-shift(row),col-shift(col));
+        [row,col] = ind2sub(size(qpData.H)+length(removeIdx),qcqpParams.H(i).maps2index);
+        qcqpParams.H(i).maps2index = sub2ind(size(qpData.H),row-shift(row),col-shift(col));
     end
     for i=1:numel(qcqpParams.f)
         qcqpParams.f(i).maps2index = qcqpParams.f(i).maps2index - shift(qcqpParams.f(i).maps2index);
     end
     for i=1:numel(qcqpParams.Aineq)
-        [row,col] = ind2sub(size(Aineq)+[0 length(removeIdx)],qcqpParams.Aineq(i).maps2index);
-        qcqpParams.Aineq(i).maps2index = sub2ind(size(Aineq),row,col-shift(col));
+        [row,col] = ind2sub(size(qpData.Aineq)+[0 length(removeIdx)],qcqpParams.Aineq(i).maps2index);
+        qcqpParams.Aineq(i).maps2index = sub2ind(size(qpData.Aineq),row,col-shift(col));
     end
     for i=1:numel(qcqpParams.Aeq)
-        [row,col] = ind2sub(size(Aeq)+[0 length(removeIdx)],qcqpParams.Aeq(i).maps2index);
-        qcqpParams.Aeq(i).maps2index = sub2ind(size(Aeq),row,col-shift(col));
+        [row,col] = ind2sub(size(qpData.Aeq)+[0 length(removeIdx)],qcqpParams.Aeq(i).maps2index);
+        qcqpParams.Aeq(i).maps2index = sub2ind(size(qpData.Aeq),row,col-shift(col));
     end
     for i=1:numel(qcqpParams.lb)
         qcqpParams.lb(i).maps2index = qcqpParams.lb(i).maps2index - shift(qcqpParams.lb(i).maps2index);
@@ -907,11 +904,11 @@ function [ sys,qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap,H,f,Aineq,bi
         row = quadIneq(1,i);
         k = quadIneq(2,i);
 
-        r(k) = r(k) + bineq(row); %#ok<AGROW>
-        l(:,k) = l(:,k) + Aineq(row,:)'; %#ok<AGROW>
+        r(k) = r(k) + qpData.bineq(row); %#ok<AGROW>
+        l(:,k) = l(:,k) + qpData.Aineq(row,:)'; %#ok<AGROW>
 
         % Convert bineq params
-        relevantParams = findRelevantParams(row, 1, size(bineq), qcqpParams.bineq);
+        relevantParams = findRelevantParams(row, 1, size(qpData.bineq), qcqpParams.bineq);
         for j=fliplr(relevantParams) % sort descending
             qcqpParams.r(end+1) = newAdditiveQcqpParam(k,qcqpParams.bineq(j).maps2origparam, ...
                 1, qcqpParams.bineq(j).factor);
@@ -919,9 +916,9 @@ function [ sys,qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap,H,f,Aineq,bi
         end
 
         % Convert Aineq params
-        relevantParams = findRelevantParams(row, 1:size(Aineq,2), size(Aineq), qcqpParams.Aineq);
+        relevantParams = findRelevantParams(row, 1:size(qpData.Aineq,2), size(qpData.Aineq), qcqpParams.Aineq);
         for j=fliplr(relevantParams) % sort descending
-            [~,col] = ind2sub(size(Aineq), qcqpParams.Aineq(j).maps2index);
+            [~,col] = ind2sub(size(qpData.Aineq), qcqpParams.Aineq(j).maps2index);
             qcqpParams.l(end+1) = newAdditiveQcqpParam(col,qcqpParams.Aineq(j).maps2origparam, ...
                 k, qcqpParams.Aineq(j).factor);
             qcqpParams.Aineq(j) = [];
@@ -929,19 +926,19 @@ function [ sys,qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap,H,f,Aineq,bi
     end
     
     % Compute shift in rows for linear inequalites
-    shift = zeros(1,length(bineq));
+    shift = zeros(1,length(qpData.bineq));
     for i=1:length(shift)
         shift(i) = nnz(quadIneq(1,:) <= i);
     end
     
     % Delete linear inequalities
-    Aineq(quadIneq(1,:),:) = [];
-    bineq(quadIneq(1,:)) = [];
+    qpData.Aineq(quadIneq(1,:),:) = [];
+    qpData.bineq(quadIneq(1,:)) = [];
     
     % Fix parameters
     for i=1:numel(qcqpParams.Aineq)
-        [row,col] = ind2sub(size(Aineq)+[length(quadIneq(1,:)) 0],qcqpParams.Aineq(i).maps2index);
-        qcqpParams.Aineq(i).maps2index = sub2ind(size(Aineq),row-shift(row),col);
+        [row,col] = ind2sub(size(qpData.Aineq)+[length(quadIneq(1,:)) 0],qcqpParams.Aineq(i).maps2index);
+        qcqpParams.Aineq(i).maps2index = sub2ind(size(qpData.Aineq),row-shift(row),col);
     end
     for i=1:numel(qcqpParams.bineq)
         qcqpParams.bineq(i).maps2index = qcqpParams.bineq(i).maps2index - shift(qcqpParams.bineq(i).maps2index);
@@ -950,33 +947,33 @@ function [ sys,qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap,H,f,Aineq,bi
     % Convert inequalities to bounds - Round 2
     % This is only necessary if we have parameters that affect bounds
     bounds_idx = [];
-    for i=1:size(Aineq,1)
-        vars = find(Aineq(i,:)); % variables used in inequality
+    for i=1:size(qpData.Aineq,1)
+        vars = find(qpData.Aineq(i,:)); % variables used in inequality
         if length(vars) == 1 && is(recover(solverVars(vars)),'linear')
-            relevantParams = findRelevantParams(i, 1:size(Aineq,2), size(Aineq), qcqpParams.Aineq);
+            relevantParams = findRelevantParams(i, 1:size(qpData.Aineq,2), size(qpData.Aineq), qcqpParams.Aineq);
             if isempty(relevantParams) % No parameters affecting LHS of inequality
-                if Aineq(i,vars) > 0 && ub(vars) == Inf % No bounds so far
+                if qpData.Aineq(i,vars) > 0 && qpData.ub(vars) == Inf % No bounds so far
                     % we can make a bound out of this
                     bounds_idx(end+1) = i; %#ok<AGROW>
-                    ub(vars) = bineq(i)/Aineq(i,vars);
+                    qpData.ub(vars) = qpData.bineq(i)/qpData.Aineq(i,vars);
 
                     % Convert bineq params
-                    relevantParams = findRelevantParams(i, 1, size(bineq), qcqpParams.bineq);
+                    relevantParams = findRelevantParams(i, 1, size(qpData.bineq), qcqpParams.bineq);
                     for j=fliplr(relevantParams) % sort descending
                         qcqpParams.ub(end+1) = newAdditiveQcqpParam(vars,qcqpParams.bineq(j).maps2origparam, ...
-                            1, qcqpParams.bineq(j).factor/Aineq(i,vars));
+                            1, qcqpParams.bineq(j).factor/qpData.Aineq(i,vars));
                         qcqpParams.bineq(j) = [];
                     end
-                elseif Aineq(i,vars) < 0 && lb(vars) == -Inf % No bounds so far
+                elseif qpData.Aineq(i,vars) < 0 && qpData.lb(vars) == -Inf % No bounds so far
                     % we can make a bound out of this
                     bounds_idx(end+1) = i; %#ok<AGROW>
-                    lb(vars) = bineq(i)/Aineq(i,vars);
+                    qpData.lb(vars) = qpData.bineq(i)/qpData.Aineq(i,vars);
 
                     % Convert bineq params
-                    relevantParams = findRelevantParams(i, 1, size(bineq), qcqpParams.bineq);
+                    relevantParams = findRelevantParams(i, 1, size(qpData.bineq), qcqpParams.bineq);
                     for j=fliplr(relevantParams) % sort descending
                         qcqpParams.lb(end+1) = newAdditiveQcqpParam(vars,qcqpParams.bineq(j).maps2origparam, ...
-                            1, qcqpParams.bineq(j).factor/Aineq(i,vars));
+                            1, qcqpParams.bineq(j).factor/qpData.Aineq(i,vars));
                         qcqpParams.bineq(j) = [];
                     end
                 end
@@ -985,19 +982,19 @@ function [ sys,qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap,H,f,Aineq,bi
     end
     
     % Compute shift in rows for linear inequalites
-    shift = zeros(1,length(bineq));
+    shift = zeros(1,length(qpData.bineq));
     for i=1:length(shift)
         shift(i) = nnz(bounds_idx <= i);
     end
     
     % Delete rows
-    Aineq(bounds_idx,:) = [];
-    bineq(bounds_idx) = [];
+    qpData.Aineq(bounds_idx,:) = [];
+    qpData.bineq(bounds_idx) = [];
     
     % Fix parameters
     for i=1:numel(qcqpParams.Aineq)
-        [row,col] = ind2sub(size(Aineq)+[length(bounds_idx) 0],qcqpParams.Aineq(i).maps2index);
-        qcqpParams.Aineq(i).maps2index = sub2ind(size(Aineq),row-shift(row),col);
+        [row,col] = ind2sub(size(qpData.Aineq)+[length(bounds_idx) 0],qcqpParams.Aineq(i).maps2index);
+        qcqpParams.Aineq(i).maps2index = sub2ind(size(qpData.Aineq),row-shift(row),col);
     end
     for i=1:numel(qcqpParams.bineq)
         qcqpParams.bineq(i).maps2index = qcqpParams.bineq(i).maps2index - shift(qcqpParams.bineq(i).maps2index);
