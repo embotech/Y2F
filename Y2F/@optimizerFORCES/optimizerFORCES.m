@@ -107,7 +107,7 @@ end
 
 % Read parameter names if they were passed along
 if nargin >= 6
-    if ~iscellstr(parameterNames)
+    if ~iscellstr(parameterNames) %#ok<ISCLSTR>
         error('parameterNames needs to be a cell array of strings.')
     end
     
@@ -136,7 +136,7 @@ end
 
 % Read output names if they were passed along
 if nargin >= 7
-    if ~iscellstr(parameterNames)
+    if ~iscellstr(parameterNames) %#ok<ISCLSTR>
         error('outputNames needs to be a cell array of strings.')
     end
     
@@ -165,7 +165,7 @@ end
 
 % Create missing parameter names
 while numel(parameterNames) < numel(parameters)
-    parameterNames{end+1} = sprintf('param%u', numel(parameterNames)+1);
+    parameterNames{end+1} = sprintf('param%u', numel(parameterNames)+1); %#ok<AGROW>
 end
 
 % We allow single parameters --> wrap them in a cell array
@@ -185,7 +185,7 @@ end
 
 % Create missing parameter names
 while numel(outputNames) < numel(solverOutputs)
-    outputNames{end+1} = sprintf('output%u', numel(outputNames)+1);
+    outputNames{end+1} = sprintf('output%u', numel(outputNames)+1); %#ok<AGROW>
 end
 
 
@@ -194,7 +194,7 @@ disp('This is Y2F (v0.1.18), the YALMIP interface of FORCES PRO.');
 disp('For more information visit https://github.com/embotech/y2f');
 fprintf('\nUsing YALMIP to convert problem into QP...')
 tic;
-[internalmodel,H,f,Aineq,bineq,Aeq,beq,lb,ub] = getQpAndModelFromYALMIP();
+[internalmodel,H,f,Aineq,bineq,Aeq,beq,lb,ub] = getQpAndModelFromYALMIP(constraint, objective);
 yalmiptime=toc;
 fprintf('   [OK, %5.1f sec]\n', yalmiptime);
 
@@ -254,7 +254,7 @@ end
 
 fprintf('Extract parameters and quadratic inequalities from YALMIP model...')
 tic;
-[qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap] = buildParamsAndQuadIneqs();
+[sys,qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap,H,f,Aineq,bineq,Aeq,beq,lb,ub] = buildParamsAndQuadIneqs( parameters,sys,internalmodel,H,f,Aineq,bineq,Aeq,beq,lb,ub );
 extractStagesTime=toc;
 fprintf('   [OK, %5.1f sec]\n', extractStagesTime);
 
@@ -279,9 +279,9 @@ for i=1:numel(qcqpParams.l)
     l_temp(qcqpParams.l(i).maps2index,qcqpParams.l(i).maps2mat) = 1;
 end
 
-%% Warn the user if the problem is/might be infeasible
 
-checkQcqpForInfeasibility()
+%% Warn the user if the problem is/might be infeasible
+checkQcqpForInfeasibility( qcqpParams,H,H_temp,Q,Q_temp,lb,ub );
 
 
 %% Generate standard stages
@@ -292,7 +292,7 @@ checkQcqpForInfeasibility()
 outputIdx = [];
 for i=1:numel(solverOutputs)
     outputVars = getvariables(solverOutputs{i});
-    outputIdx = [outputIdx find(ismember(solverVars, outputVars))];
+    outputIdx = [outputIdx find(ismember(solverVars, outputVars))]; %#ok<AGROW>
 end
 
 graphComponents = pathGraphsFromQcqp(H_temp,Aineq_temp,Aeq_temp,Q_temp,l_temp);
@@ -308,7 +308,7 @@ for i=1:numel(stages)
         standardParamValues{i} = stages{i}(1).cost.f;
         stages{i}(1).cost.f = [];
     else % count params
-        sys.solverHasParams(i) = 1;        
+        sys.solverHasParams(i) = 1;
     end
 end
 
@@ -317,13 +317,13 @@ sys.solverIsBinary = zeros(1,numel(stages));
 if ~isempty(qcqpParams.bidx) 
     for i=1:numel(stages)
         if any(ismember(cell2mat(graphComponents{i}.vertices),qcqpParams.bidx))
-            sys.solverIsBinary(i) = 1;      
+            sys.solverIsBinary(i) = 1;
         end
     end
 end
 
 % Assemble outputs
-outputFORCES = buildOutput();
+[sys,outputFORCES] = buildOutput( solverOutputs,solverVars,graphComponents,stages,sys,paramVars,yalmipParamMap );
 
 assembleStagesTime=toc;
 fprintf('   [OK, %5.1f sec]\n', assembleStagesTime);
@@ -331,12 +331,12 @@ fprintf('   [OK, %5.1f sec]\n', assembleStagesTime);
 %% Print stage sizes
 if numel(stages) == 1
     fprintf('Found %u stages:\n', numel(stages{1}));
-    printStageSizes('  ', stages{1});    
+    printStageSizes(stages{1},'  ');
 else  % we have multiple solvers
     fprintf('The problem is separable. %u solvers are needed:\n', numel(stages));
     for i=1:numel(stages)
         fprintf('    - Solver %u has %u stages:\n', i, numel(stages{i}));
-        printStageSizes('        ', stages{i});
+        printStageSizes(stages{i},'        ');
     end
 end
 
@@ -415,7 +415,7 @@ end
 % HELPER FUNCTIONS
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-function [internalmodel,H,f,Aineq,bineq,Aeq,beq,lb,ub] = getQpAndModelFromYALMIP()
+function [internalmodel,H,f,Aineq,bineq,Aeq,beq,lb,ub] = getQpAndModelFromYALMIP(constraint, objective)
 % Helper function that uses YALMIP to create Qp from user's constraints
 % and objective. Parameters and quadratic constraints are ignored for
 % now and handled later on.
@@ -453,7 +453,7 @@ function [internalmodel,H,f,Aineq,bineq,Aeq,beq,lb,ub] = getQpAndModelFromYALMIP
         vars = find(Aineq(i,:)); % variables used in inequality
         if length(vars) == 1 && internalmodel.variabletype(vars) == 0 % a single linear variable
             % we can make a bound out of this
-            bounds_idx(end+1) = i;
+            bounds_idx(end+1) = i; %#ok<AGROW>
             if Aineq(i,vars) > 0 % upper bound
                 ub(vars) = min(ub(vars),bineq(i)/Aineq(i,vars));
             else % < 0 --> lower bound
@@ -467,7 +467,7 @@ function [internalmodel,H,f,Aineq,bineq,Aeq,beq,lb,ub] = getQpAndModelFromYALMIP
 end
 
 
-function [qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap] = buildParamsAndQuadIneqs()
+function [ sys,qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap,H,f,Aineq,bineq,Aeq,beq,lb,ub ] = buildParamsAndQuadIneqs( parameters,sys,internalmodel,H,f,Aineq,bineq,Aeq,beq,lb,ub )
 % Helper function that builds QCQp parameter list and recognises
 % quadratic inequalities
 
@@ -517,12 +517,12 @@ function [qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap] = buildParamsAnd
 
             % find YALMIP variables that make up parameter
             newParams = getvariables(parameters{i});
-            paramVars = [paramVars newParams];
+            paramVars = [paramVars newParams]; %#ok<AGROW>
 
             % find element inside matrix (given by user) that contains value of
             % parameter
             for p=newParams
-                yalmipParamMap(:,end+1) = [i; find(getbasematrix(parameters{i},p),1)];
+                yalmipParamMap(:,end+1) = [i; find(getbasematrix(parameters{i},p),1)]; %#ok<AGROW>
             end
         end
 
@@ -531,8 +531,6 @@ function [qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap] = buildParamsAnd
     else
         sys.numParams = 0;
     end
-
-
 
     quadIneq = zeros(2,0); % data structure for keeping track of (parametric) quadratic inequalities
     % first row:     id of linear inequality
@@ -567,7 +565,7 @@ function [qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap] = buildParamsAnd
             p_idx = find(paramVars == internalmodel.used_variables(i),1);
 
             % Variable is parameter --> remove it
-            removeIdx = [removeIdx i];
+            removeIdx = [removeIdx i]; %#ok<AGROW>
 
             % Check if parameter appears in H --> put into f
             rows = find(H(:,i));
@@ -601,7 +599,7 @@ function [qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap] = buildParamsAnd
 
             % Check bounds
             if lb(i) ~= -Inf || ub(i) ~= Inf
-                beep
+                beep;
                 warning('Y2F:parameterBounds','Bounds on parameters have no effect.')
             end
 
@@ -626,7 +624,7 @@ function [qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap] = buildParamsAnd
                     end
 
                     % Remove this pseudo-variable
-                    removeIdx = [removeIdx i];
+                    removeIdx = [removeIdx i]; %#ok<AGROW>
 
                     % If it appears in the linear cost --> move it
                     if f(i) ~= 0
@@ -645,7 +643,7 @@ function [qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap] = buildParamsAnd
 
                     % Check bounds
                     if lb(i) ~= -Inf || ub(i) ~= Inf
-                        beep
+                        beep;
                         warning('Y2F:quadraticTermBounds','Bounds on quadratic terms have no effect.')
                     end
 
@@ -669,7 +667,7 @@ function [qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap] = buildParamsAnd
 
                     if ~any(ismember(deps, paramVars)) % no parameter
                         % Remove this pseudo-variable
-                        removeIdx = [removeIdx i];
+                        removeIdx = [removeIdx i]; %#ok<AGROW>
 
                         % If it appears in the linear cost --> move it
                         if f(i) ~= 0
@@ -689,7 +687,7 @@ function [qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap] = buildParamsAnd
 
                         % Check bounds
                         if lb(i) ~= -Inf || ub(i) ~= Inf
-                            beep
+                            beep;
                             warning('Y2F:bilinearTermBounds','Bounds on bilinear terms have no effect.')
                         end
 
@@ -721,7 +719,7 @@ function [qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap] = buildParamsAnd
                         end
 
                         % Variable is parameter --> remove it
-                        removeIdx = [removeIdx i];
+                        removeIdx = [removeIdx i]; %#ok<AGROW>
 
                         % Does bilinear combo influence cost?
                         if f(i) ~= 0
@@ -746,7 +744,7 @@ function [qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap] = buildParamsAnd
 
                         % Check bounds
                         if lb(i) ~= -Inf || ub(i) ~= Inf
-                            beep
+                            beep;
                             warning('Y2F:bilinearTermBounds','Bounds on bilinear terms have no effect.')
                         end
                     end
@@ -797,7 +795,7 @@ function [qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap] = buildParamsAnd
                 end
 
                 % Variable is parameter --> remove it
-                removeIdx = [removeIdx i];
+                removeIdx = [removeIdx i]; %#ok<AGROW>
 
                 if f(i) ~= 0 % pseudo-variable affects cost --> param in H
                     qcqpParams.H(end+1) = newAdditiveQcqpParam(sub2ind(size(H),v1_idx,v2_idx),p_idx,1,f(i));
@@ -816,7 +814,7 @@ function [qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap] = buildParamsAnd
 
                 % Check bounds
                 if lb(i) ~= -Inf || ub(i) ~= Inf
-                    beep
+                    beep;
                     warning('Y2F:nonlinearTermBounds','Bounds on nonlinear terms have no effect.')
                 end
 
@@ -857,8 +855,8 @@ function [qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap] = buildParamsAnd
     ub(removeIdx) = [];
     if ~isempty(Q)
         for k=1:numel(Q)
-            Q{k}(removeIdx,:) = [];
-            Q{k}(:,removeIdx) = [];
+            Q{k}(removeIdx,:) = []; %#ok<AGROW>
+            Q{k}(:,removeIdx) = []; %#ok<AGROW>
         end
         l(removeIdx,:) = [];
     end
@@ -901,8 +899,8 @@ function [qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap] = buildParamsAnd
         row = quadIneq(1,i);
         k = quadIneq(2,i);
 
-        r(k) = r(k) + bineq(row);
-        l(:,k) = l(:,k) + Aineq(row,:)';
+        r(k) = r(k) + bineq(row); %#ok<AGROW>
+        l(:,k) = l(:,k) + Aineq(row,:)'; %#ok<AGROW>
 
         % Convert bineq params
         relevantParams = findRelevantParams(row, 1, size(bineq), qcqpParams.bineq);
@@ -921,14 +919,17 @@ function [qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap] = buildParamsAnd
             qcqpParams.Aineq(j) = [];
         end
     end
+    
     % Compute shift in rows for linear inequalites
     shift = zeros(1,length(bineq));
     for i=1:length(shift)
         shift(i) = nnz(quadIneq(1,:) <= i);
     end
+    
     % Delete linear inequalities
     Aineq(quadIneq(1,:),:) = [];
     bineq(quadIneq(1,:)) = [];
+    
     % Fix parameters
     for i=1:numel(qcqpParams.Aineq)
         [row,col] = ind2sub(size(Aineq)+[length(quadIneq(1,:)) 0],qcqpParams.Aineq(i).maps2index);
@@ -948,7 +949,7 @@ function [qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap] = buildParamsAnd
             if isempty(relevantParams) % No parameters affecting LHS of inequality
                 if Aineq(i,vars) > 0 && ub(vars) == Inf % No bounds so far
                     % we can make a bound out of this
-                    bounds_idx(end+1) = i;
+                    bounds_idx(end+1) = i; %#ok<AGROW>
                     ub(vars) = bineq(i)/Aineq(i,vars);
 
                     % Convert bineq params
@@ -960,7 +961,7 @@ function [qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap] = buildParamsAnd
                     end
                 elseif Aineq(i,vars) < 0 && lb(vars) == -Inf % No bounds so far
                     % we can make a bound out of this
-                    bounds_idx(end+1) = i;
+                    bounds_idx(end+1) = i; %#ok<AGROW>
                     lb(vars) = bineq(i)/Aineq(i,vars);
 
                     % Convert bineq params
@@ -974,14 +975,17 @@ function [qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap] = buildParamsAnd
             end
         end
     end
+    
     % Compute shift in rows for linear inequalites
     shift = zeros(1,length(bineq));
     for i=1:length(shift)
         shift(i) = nnz(bounds_idx <= i);
     end
+    
     % Delete rows
     Aineq(bounds_idx,:) = [];
     bineq(bounds_idx) = [];
+    
     % Fix parameters
     for i=1:numel(qcqpParams.Aineq)
         [row,col] = ind2sub(size(Aineq)+[length(bounds_idx) 0],qcqpParams.Aineq(i).maps2index);
@@ -994,7 +998,7 @@ function [qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap] = buildParamsAnd
 end
 
 
-function [k,quadIneq,Q,l,r] = findOrCreateQuadraticInequality(rowIdx,quadIneq,Q,l,r)
+function [ k,quadIneq,Q,l,r ] = findOrCreateQuadraticInequality( rowIdx,quadIneq,Q,l,r )
 % Helper function to find/create quadratic inequalities
 %   Input:
 %       rowIdx      index of linear inequality (row in Aineq)
@@ -1022,7 +1026,7 @@ function [k,quadIneq,Q,l,r] = findOrCreateQuadraticInequality(rowIdx,quadIneq,Q,
 end
 
 
-function outputFORCES = buildOutput()
+function [ sys,outputFORCES ] = buildOutput( solverOutputs,solverVars,graphComponents,stages,sys,paramVars,yalmipParamMap )
 % Helper function that builds the output struct required for the FORCES
 % solver(s), an outputMap that allows to recover the wantend output
 % values from the solver output, an outputParamTable that allows the
@@ -1045,7 +1049,7 @@ function outputFORCES = buildOutput()
             idx = find(solverVars == outputVars(j),1);
             if length(idx) == 1
                 [stage, state, component] = findVariableIndex(graphComponents,idx);
-                outputFORCES{component}(o(component)) = newOutput(sprintf('o_%u',o(component)), stage, state);
+                outputFORCES{component}(o(component)) = newOutput(sprintf('o_%u',o(component)), stage, state); %#ok<AGROW>
                 sys.outputMap(:,end+1) = [1; component; o(component)];
                 o(component) = o(component) + 1;
             else
@@ -1065,7 +1069,7 @@ function outputFORCES = buildOutput()
 end
 
 
-function checkQcqpForInfeasibility()
+function [] = checkQcqpForInfeasibility( qcqpParams,H,H_temp,Q,Q_temp,lb,ub )
 % Helper function that checks if the QCQP might be infeasible and warns
 % the user
 
@@ -1075,7 +1079,7 @@ function checkQcqpForInfeasibility()
     end
 
     if ~issymmetric(H_temp)
-        beep
+        beep;
         warning('Y2F:nonsymmetricHessian','Hessian is not symmetric.')
     end
 
@@ -1087,13 +1091,13 @@ function checkQcqpForInfeasibility()
     % Check if any quadratic constraint matrix is indefinite
     for k=1:numel(Q_temp)
         if ~issymmetric(Q_temp{k})
-            beep
+            beep;
             warning('Y2F:nonsymmetricQuadraticConstraint', ...
                 'One of the quadratic constraint matrices is not symmetric.')
         end
 
         if isempty(qcqpParams.Q) && any(eig(Q{k}) < -1e-7) && any(eig(Q{k}) > -1e-7)
-            beep
+            beep;
             warning('Y2F:indefiniteQuadraticConstraint', ...
                 'One of the quadratic constraint matrices is indefinite.')
         end
@@ -1101,8 +1105,8 @@ function checkQcqpForInfeasibility()
 
     % Create warning if binary variables are used
     if ~isempty(qcqpParams.bidx)
-        while 1
-            beep
+        while true
+            beep;
             % MATLAB displays anything between [\8 ... ]\8 in orange font
             in = input(['[' 8 'YALMIP created a mixed integer problem. This could slow down the generated solver.\nDo you want to continue [y/n]? ]' 8],'s');
             if strcmpi(in,'y')
@@ -1116,7 +1120,7 @@ function checkQcqpForInfeasibility()
 end
 
 
-function printStageSizes(indentation, stages)
+function [] = printStageSizes(stages, indentation)
 % Helper function for printing number of variables, equalities and inequalities
 
     % Compute width of fields
