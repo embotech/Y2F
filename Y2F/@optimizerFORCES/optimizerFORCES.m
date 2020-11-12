@@ -97,55 +97,7 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
     yalmipTime = toc;
     fprintf('   [OK, %5.1f sec]\n', yalmipTime);
 
-    % Check if matrices are numeric
-    if ~isnumeric(qpData.H) || ~isnumeric(qpData.f)
-        error('Y2F can only handle numeric inputs. There are non-numeric terms in the cost.')
-    end
-    if ~isnumeric(qpData.Aineq) || ~isnumeric(qpData.bineq)
-        error('Y2F can only handle numeric inputs. There are non-numeric terms in the inequality contraints.')
-    end
-    if ~isnumeric(qpData.Aeq) || ~isnumeric(qpData.beq)
-        error('Y2F can only handle numeric inputs. There are non-numeric terms in the equality contraints.')
-    end
-    if ~isnumeric(qpData.lb) || ~isnumeric(qpData.ub)
-        error('Y2F can only handle numeric inputs. There are non-numeric terms in the bounds.')
-    end
-
-    % Check if matrices are real
-    if ~isreal(qpData.H) || ~isreal(qpData.f)
-        error('Y2F can only handle real inputs. There are complex terms in the cost.')
-    end
-    if ~isreal(qpData.Aineq) || ~isreal(qpData.bineq)
-        error('Y2F can only handle real inputs. There are complex terms in the inequality contraints.')
-    end
-    if ~isreal(qpData.Aeq) || ~isreal(qpData.beq)
-        error('Y2F can only handle real inputs. There are complex terms in the equality contraints.')
-    end
-    if ~isreal(qpData.lb) || ~isreal(qpData.ub)
-        error('Y2F can only handle real inputs. There are complex terms in the bounds.')
-    end
-
-    % Check if matrices are doubles
-    if ~isa(qpData.H,'double') || ~isa(qpData.f,'double')
-        warning('Y2F:nonDoubleCost', 'Y2F can only handle inputs of type ''double''. The cost will be cast to ''double''.')
-        qpData.H = double(qpData.H);
-        qpData.f = double(qpData.f);
-    end
-    if ~isa(qpData.Aineq,'double') || ~isa(qpData.bineq,'double')
-        warning('Y2F:nonDoubleInequality', 'Y2F can only handle inputs of type ''double''. The inequality constraints will be cast to ''double''.')
-        qpData.Aineq = double(qpData.Aineq);
-        qpData.bineq = double(qpData.bineq);
-    end
-    if ~isa(qpData.Aeq,'double') || ~isa(qpData.beq,'double')
-        warning('Y2F:nonDoubleEquality', 'Y2F can only handle inputs of type ''double''. The equality constraints will be cast to ''double''.')
-        qpData.Aeq = double(qpData.Aeq);
-        qpData.beq = double(qpData.beq);
-    end
-    if ~isa(qpData.lb,'double') || ~isa(qpData.ub,'double')
-        warning('Y2F:nonDoubleBounds', 'Y2F can only handle inputs of type ''double''. The bounds will be cast to ''double''.')
-        qpData.lb = double(qpData.lb);
-        qpData.ub = double(qpData.ub);
-    end
+    qpData = sanitizeQpData( qpData );
 
     %% Assemble parameters & convert quadratic variables
     % Quadratic inequalities are not recognized by YALMIP
@@ -416,6 +368,61 @@ function [ codeoptions,parameters,solverOutputs,parameterNames,outputNames,sys ]
         outputNames{end+1} = sprintf('output%u', numel(outputNames)+1); %#ok<AGROW>
     end
 
+end
+
+
+function [ qpData ] = sanitizeQpData( qpData )
+
+    % Check if matrices are numeric
+    if ~isnumeric(qpData.H) || ~isnumeric(qpData.f)
+        error('Y2F can only handle numeric inputs. There are non-numeric terms in the cost.')
+    end
+    if ~isnumeric(qpData.Aineq) || ~isnumeric(qpData.bineq)
+        error('Y2F can only handle numeric inputs. There are non-numeric terms in the inequality contraints.')
+    end
+    if ~isnumeric(qpData.Aeq) || ~isnumeric(qpData.beq)
+        error('Y2F can only handle numeric inputs. There are non-numeric terms in the equality contraints.')
+    end
+    if ~isnumeric(qpData.lb) || ~isnumeric(qpData.ub)
+        error('Y2F can only handle numeric inputs. There are non-numeric terms in the bounds.')
+    end
+
+    % Check if matrices are real
+    if ~isreal(qpData.H) || ~isreal(qpData.f)
+        error('Y2F can only handle real inputs. There are complex terms in the cost.')
+    end
+    if ~isreal(qpData.Aineq) || ~isreal(qpData.bineq)
+        error('Y2F can only handle real inputs. There are complex terms in the inequality contraints.')
+    end
+    if ~isreal(qpData.Aeq) || ~isreal(qpData.beq)
+        error('Y2F can only handle real inputs. There are complex terms in the equality contraints.')
+    end
+    if ~isreal(qpData.lb) || ~isreal(qpData.ub)
+        error('Y2F can only handle real inputs. There are complex terms in the bounds.')
+    end
+
+    % Check if matrices are doubles
+    if ~isa(qpData.H,'double') || ~isa(qpData.f,'double')
+        warning('Y2F:nonDoubleCost', 'Y2F can only handle inputs of type ''double''. The cost will be cast to ''double''.')
+        qpData.H = double(qpData.H);
+        qpData.f = double(qpData.f);
+    end
+    if ~isa(qpData.Aineq,'double') || ~isa(qpData.bineq,'double')
+        warning('Y2F:nonDoubleInequality', 'Y2F can only handle inputs of type ''double''. The inequality constraints will be cast to ''double''.')
+        qpData.Aineq = double(qpData.Aineq);
+        qpData.bineq = double(qpData.bineq);
+    end
+    if ~isa(qpData.Aeq,'double') || ~isa(qpData.beq,'double')
+        warning('Y2F:nonDoubleEquality', 'Y2F can only handle inputs of type ''double''. The equality constraints will be cast to ''double''.')
+        qpData.Aeq = double(qpData.Aeq);
+        qpData.beq = double(qpData.beq);
+    end
+    if ~isa(qpData.lb,'double') || ~isa(qpData.ub,'double')
+        warning('Y2F:nonDoubleBounds', 'Y2F can only handle inputs of type ''double''. The bounds will be cast to ''double''.')
+        qpData.lb = double(qpData.lb);
+        qpData.ub = double(qpData.ub);
+    end
+    
 end
 
 
