@@ -1,4 +1,4 @@
-function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,parameters,solverOutputs,parameterNames,outputNames )
+function [self, success] = optimizerFORCES( constraint,objective,codeoptions,parameters,solverOutputs,parameterNames,outputNames )
 %OPTIMIZERFORCES Generates a FORCES PRO solver from a YALMIP problem formulation
 %
 %   solver = OPTIMIZERFORCES(constraint,objective,codeoptions,parameters,solverOutputs)
@@ -79,8 +79,8 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
         error('YALMIP could not be found. Please make sure it is installed correctly.')
     end
 
-    sys = setupOptimizerForcesClass( codeoptions,parameters,parameterNames,outputNames );
-    [ sys,solverOutputs ] = sanitizeInputData( sys,solverOutputs, nargin,{inputname(4),inputname(5)} );
+    self = setupOptimizerForcesClass( codeoptions,parameters,parameterNames,outputNames );
+    [ self,solverOutputs ] = sanitizeInputData( self,solverOutputs, nargin,{inputname(4),inputname(5)} );
     
     %% Call YALMIP and convert QP into FORCES format
     disp('This is Y2F (v0.1.18), the YALMIP interface of FORCES PRO.');
@@ -99,26 +99,26 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
     % Information is stored in internalmodel
     fprintf('Extract parameters and quadratic inequalities from YALMIP model...')
     tic;
-    [ sys,qpData, Q,l,r,paramVars,yalmipParamMap ] = buildParamsAndQuadIneqs( sys,qpData,internalmodel );
+    [ self,qpData, Q,l,r,paramVars,yalmipParamMap ] = buildParamsAndQuadIneqs( self,qpData,internalmodel );
     extractStagesTime = toc;
     fprintf('   [OK, %5.1f sec]\n', extractStagesTime);
 
     %% Assemble stages
     fprintf('Assembling stages...')
     tic;
-    sys = assembleStages( sys,qpData,solverOutputs, Q,l,r,paramVars,yalmipParamMap );
+    self = assembleStages( self,qpData,solverOutputs, Q,l,r,paramVars,yalmipParamMap );
     assembleStagesTime = toc;
     fprintf('   [OK, %5.1f sec]\n', assembleStagesTime);
 
     %% Print stage sizes
-    if sys.numSolvers == 1
-        fprintf('Found %u stages:\n', numel(sys.stages{1}));
-        printStageSizes(sys.stages{1},'  ');
+    if self.numSolvers == 1
+        fprintf('Found %u stages:\n', numel(self.stages{1}));
+        printStageSizes(self.stages{1},'  ');
     else  % we have multiple solvers
-        fprintf('The problem is separable. %u solvers are needed:\n', sys.numSolvers);
-        for i=1:sys.numSolvers
-            fprintf('    - Solver %u has %u stages:\n', i, numel(sys.stages{i}));
-            printStageSizes(sys.stages{i},'        ');
+        fprintf('The problem is separable. %u solvers are needed:\n', self.numSolvers);
+        for i=1:self.numSolvers
+            fprintf('    - Solver %u has %u stages:\n', i, numel(self.stages{i}));
+            printStageSizes(self.stages{i},'        ');
         end
     end
 
@@ -126,32 +126,32 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
     disp('Generating solver using FORCESPRO...')
 
     % backing up user-defined codeoptions
-    sys.default_codeoptions = sys.codeoptions;
+    self.default_codeoptions = self.codeoptions;
     
     % set flag to let FORCES know that request came from Y2F
-    sys.default_codeoptions.interface = 'y2f';
+    self.default_codeoptions.interface = 'y2f';
         
-    sys.codeoptions = cell(1,sys.numSolvers);
-    for i=1:sys.numSolvers
-        sys.codeoptions{i} = sys.default_codeoptions;
+    self.codeoptions = cell(1,self.numSolvers);
+    for i=1:self.numSolvers
+        self.codeoptions{i} = self.default_codeoptions;
         % new name for each solver
-        sys.codeoptions{i}.name = sprintf('internal_%s_%u',sys.default_codeoptions.name,i);
-        sys.codeoptions{i}.nohash = 1; % added by AD to avoid problem - exeprimental
+        self.codeoptions{i}.name = sprintf('internal_%s_%u',self.default_codeoptions.name,i);
+        self.codeoptions{i}.nohash = 1; % added by AD to avoid problem - exeprimental
     end
     
-    sys.interfaceFunction = str2func(sys.default_codeoptions.name);
+    self.interfaceFunction = str2func(self.default_codeoptions.name);
 
     % actually generate solver(s)
     success = 1;
-    for i=1:sys.numSolvers
-        success = generateCode( sys.stages{i},sys.params{i},sys.codeoptions{i},sys.outputFORCES{i} ) & success;
+    for i=1:self.numSolvers
+        success = generateCode( self.stages{i},self.params{i},self.codeoptions{i},self.outputFORCES{i} ) & success;
     end
     if ~success
         error('Code generation was not successful');
     end
 
     %% Generate MEX code that is called when the solver is used
-    generateMexCode( sys );
+    generateMexCode( self );
 
 end
 
@@ -160,43 +160,43 @@ end
 % HELPER FUNCTIONS
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-function [ sys ] = setupOptimizerForcesClass( codeoptions,parameters,parameterNames,outputNames )
+function [ self ] = setupOptimizerForcesClass( codeoptions,parameters,parameterNames,outputNames )
 % Helper function to setup struct that is going to be converted into the optimizerFORCES class.
 
-    sys = struct();
+    self = struct();
 
-    sys.codeoptions = codeoptions;
-    sys.parameters = parameters;
-    sys.paramNames = parameterNames;
-    sys.outputNames = outputNames;
+    self.codeoptions = codeoptions;
+    self.parameters = parameters;
+    self.paramNames = parameterNames;
+    self.outputNames = outputNames;
     
-    sys.qcqpParams = struct();
-    sys.stages = {};
-    sys.params = {};
-    sys.standardParamValues = {};
-    sys.forcesParamMap = {};
-    sys.outputFORCES = {};
-    sys.outputMap = [];
-    sys.outputBase = {};
-    sys.outputSize = {};
-    sys.lengthOutput = 0;
-    sys.numSolvers = 0;
+    self.qcqpParams = struct();
+    self.stages = {};
+    self.params = {};
+    self.standardParamValues = {};
+    self.forcesParamMap = {};
+    self.outputFORCES = {};
+    self.outputMap = [];
+    self.outputBase = {};
+    self.outputSize = {};
+    self.lengthOutput = 0;
+    self.numSolvers = 0;
 
-    sys.default_codeoptions = [];
-    sys.solverHasParams = [];
-    sys.solverIsBinary = [];
-    sys.solverVars = [];
-    sys.paramSizes = [];
-    sys.numParams = 0;
-    sys.outputIsCell = 1;
-    sys.interfaceFunction = [];
+    self.default_codeoptions = [];
+    self.solverHasParams = [];
+    self.solverIsBinary = [];
+    self.solverVars = [];
+    self.paramSizes = [];
+    self.numParams = 0;
+    self.outputIsCell = 1;
+    self.interfaceFunction = [];
     
-    sys = class(sys,'optimizerFORCES');
+    self = class(self,'optimizerFORCES');
     
 end
 
 
-function [ sys,solverOutputs ] = sanitizeInputData( sys,solverOutputs, nArgIn,inputNames )
+function [ self,solverOutputs ] = sanitizeInputData( self,solverOutputs, nArgIn,inputNames )
 % Helper function to make sure certain user input is given in the correct format.
 
     % We need all arguments
@@ -215,92 +215,92 @@ function [ sys,solverOutputs ] = sanitizeInputData( sys,solverOutputs, nArgIn,in
 
     % Make valid solver name
     if ~verLessThan('matlab', '8.3')
-        sys.codeoptions.name = matlab.lang.makeValidName(sys.codeoptions.name);
+        self.codeoptions.name = matlab.lang.makeValidName(self.codeoptions.name);
     else
-        sys.codeoptions.name = genvarname(sys.codeoptions.name);
+        self.codeoptions.name = genvarname(self.codeoptions.name);
     end
 
     % We need parameters
-    if isempty(sys.parameters)
+    if isempty(self.parameters)
         error('FORCES PRO does not support problems without parameters.');
     end
 
     % Read parameter names if they were passed along
     if (nArgIn >= 6)
-        if ~iscellstr(sys.paramNames)
+        if ~iscellstr(self.paramNames)
             error('parameterNames needs to be a cell array of strings.')
         end
 
         % Fix names (make them valid and unique)
         if ~verLessThan('matlab', '8.3')
-            sys.paramNames = matlab.lang.makeValidName(sys.paramNames);
-            sys.paramNames = matlab.lang.makeUniqueStrings(sys.paramNames);
+            self.paramNames = matlab.lang.makeValidName(self.paramNames);
+            self.paramNames = matlab.lang.makeUniqueStrings(self.paramNames);
         else
-            sys.paramNames = genvarname(sys.paramNames);
+            self.paramNames = genvarname(self.paramNames);
         end
     elseif isa(solverOutputs,'sdpvar')
         % Single parameter supplied, we might get its name!
         name = inputNames{1};
         if ~isempty(name)
-            sys.paramNames = {name};
+            self.paramNames = {name};
         else
-            sys.paramNames = {};
+            self.paramNames = {};
             warning('Y2F:noParameterNames',['No parameter names specified for solver. We recommend adding names for better code documentation. ' ...
             'For more info type ''help optimizerFORCES''.']);
         end
     else
-        sys.paramNames = {};
+        self.paramNames = {};
         warning('Y2F:noParameterNames',['No parameter names specified for solver. We recommend adding names for better code documentation. ' ...
             'For more info type ''help optimizerFORCES''.']);
     end
 
     % Read output names if they were passed along
     if (nArgIn >= 7)
-        if ~iscellstr(sys.paramNames)
+        if ~iscellstr(self.paramNames)
             error('outputNames needs to be a cell array of strings.')
         end
 
         % Fix names (make them valid and unique)
         if ~verLessThan('matlab', '8.3')
-            sys.outputNames = matlab.lang.makeValidName(sys.outputNames);
-            sys.outputNames = matlab.lang.makeUniqueStrings(sys.outputNames);
+            self.outputNames = matlab.lang.makeValidName(self.outputNames);
+            self.outputNames = matlab.lang.makeUniqueStrings(self.outputNames);
         else
-            sys.outputNames = genvarname(sys.outputNames);
+            self.outputNames = genvarname(self.outputNames);
         end
     elseif isa(solverOutputs,'sdpvar')
         % Single output supplied, we might get its name!
         name = inputNames{2};
         if ~isempty(name)
-            sys.outputNames = {name};
+            self.outputNames = {name};
         else
-            sys.outputNames = {};
+            self.outputNames = {};
             warning('Y2F:noOutputNames',['No output names specified for solver. We recommend adding names for better code documentation. ' ...
             'For more info type ''help optimizerFORCES''.']);
         end
     else
-        sys.outputNames = {};
+        self.outputNames = {};
         warning('Y2F:noOutputNames',['No output names specified for solver. We recommend adding names for better code documentation. ' ...
             'For more info type ''help optimizerFORCES''.']);
     end
 
     % Create missing parameter names
-    while numel(sys.paramNames) < numel(sys.parameters)
-        sys.paramNames{end+1} = sprintf('param%u', numel(sys.paramNames)+1);
+    while numel(self.paramNames) < numel(self.parameters)
+        self.paramNames{end+1} = sprintf('param%u', numel(self.paramNames)+1);
     end
 
     % We allow single parameters --> wrap them in a cell array
-    if ~iscell(sys.parameters) 
-        sys.parameters = {sys.parameters}; % put single param into cell array
+    if ~iscell(self.parameters) 
+        self.parameters = {self.parameters}; % put single param into cell array
     end
 
     if ~iscell(solverOutputs)
         solverOutputs = {solverOutputs};
-        sys.outputIsCell = 0;
+        self.outputIsCell = 0;
     end
 
     % Create missing parameter names
-    while numel(sys.outputNames) < numel(solverOutputs)
-        sys.outputNames{end+1} = sprintf('output%u', numel(sys.outputNames)+1);
+    while numel(self.outputNames) < numel(solverOutputs)
+        self.outputNames{end+1} = sprintf('output%u', numel(self.outputNames)+1);
     end
 
 end
@@ -416,7 +416,7 @@ function [ qpData,internalmodel ] = getQpAndModelFromYALMIP( constraint,objectiv
 end
 
 
-function [ sys,qpData,Q,l,r,paramVars,yalmipParamMap ] = buildParamsAndQuadIneqs( sys,qpData,internalmodel )
+function [ self,qpData,Q,l,r,paramVars,yalmipParamMap ] = buildParamsAndQuadIneqs( self,qpData,internalmodel )
 % Helper function that builds QCQp parameter list and recognises
 % quadratic inequalities
 
@@ -454,30 +454,34 @@ function [ sys,qpData,Q,l,r,paramVars,yalmipParamMap ] = buildParamsAndQuadIneqs
     paramVars = []; % YALMIP variables that are parameters
     yalmipParamMap = zeros(2,0); % 1st row: index of matrix with values,
     % 2nd row: index of element inside matrix
-    if ~isempty(sys.parameters)
-        sys.paramSizes = zeros(numel(sys.parameters),2);
-        for i=1:numel(sys.parameters)
-            if ~isa(sys.parameters{i}, 'sdpvar')
+    if ~isempty(self.parameters)
+        self.paramSizes = zeros(numel(self.parameters),2);
+        for i=1:numel(self.parameters)
+            if ~isa(self.parameters{i}, 'sdpvar')
                 error('Parameters must be a SDPVAR or a cell array of SDPVARs.');
             end
 
             % store size for code generation
-            sys.paramSizes(i,:) = size(sys.parameters{i});
+            self.paramSizes(i,:) = size(self.parameters{i});
 
             % find YALMIP variables that make up parameter
-            newParams = getvariables(sys.parameters{i});
+            newParams = getvariables(self.parameters{i});
             paramVars = [paramVars newParams]; %#ok<AGROW>
 
             % find element inside matrix (given by user) that contains value of
             % parameter
             for p=newParams
-                yalmipParamMap(:,end+1) = [i; find(getbasematrix(sys.parameters{i},p),1)]; %#ok<AGROW>
+                yalmipParamMap(:,end+1) = [i; find(getbasematrix(self.parameters{i},p),1)]; %#ok<AGROW>
             end
         end
 
         assert(length(paramVars) == size(yalmipParamMap,2));
-        sys.numParams = numel(sys.parameters);
+        self.numParams = numel(self.parameters);
     end
+    
+    % erase YALMIP parameters after last use to allow dumping of 
+    % optimizerFORCES class (note that sdpvars cannot be stored in a MAT file!)
+    self.parameters = {};
 
     quadIneq = zeros(2,0); % data structure for keeping track of (parametric) quadratic inequalities
     % first row:     id of linear inequality
@@ -783,8 +787,8 @@ function [ sys,qpData,Q,l,r,paramVars,yalmipParamMap ] = buildParamsAndQuadIneqs
     end
 
     % Before removing params, every real state can be recovered
-    sys.solverVars = internalmodel.used_variables;
-    sys.solverVars(removeIdx) = [];
+    self.solverVars = internalmodel.used_variables;
+    self.solverVars(removeIdx) = [];
 
     % Compute shifts of variables (to adjust parameters)
     shift = zeros(1,length(internalmodel.used_variables));
@@ -891,7 +895,7 @@ function [ sys,qpData,Q,l,r,paramVars,yalmipParamMap ] = buildParamsAndQuadIneqs
     bounds_idx = [];
     for i=1:size(qpData.Aineq,1)
         vars = find(qpData.Aineq(i,:)); % variables used in inequality
-        if length(vars) == 1 && is(recover(sys.solverVars(vars)),'linear')
+        if length(vars) == 1 && is(recover(self.solverVars(vars)),'linear')
             relevantParams = findRelevantParams(i, 1:size(qpData.Aineq,2), size(qpData.Aineq), qcqpParams.Aineq);
             if isempty(relevantParams) % No parameters affecting LHS of inequality
                 if qpData.Aineq(i,vars) > 0 && qpData.ub(vars) == Inf % No bounds so far
@@ -942,7 +946,7 @@ function [ sys,qpData,Q,l,r,paramVars,yalmipParamMap ] = buildParamsAndQuadIneqs
         qcqpParams.bineq(i).maps2index = qcqpParams.bineq(i).maps2index - shift(qcqpParams.bineq(i).maps2index);
     end
     
-    sys.qcqpParams = qcqpParams;
+    self.qcqpParams = qcqpParams;
     
 end
 
@@ -975,28 +979,28 @@ function [ k,quadIneq,Q,l,r ] = findOrCreateQuadraticInequality( rowIdx,quadIneq
 end
 
 
-function [ sys ] = assembleStages( sys,qpData,solverOutputs, Q,l,r,paramVars,yalmipParamMap )
+function [ self ] = assembleStages( self,qpData,solverOutputs, Q,l,r,paramVars,yalmipParamMap )
 % Helper function to setup stages that are used to generate FORCESPRO solvers.
 
     % Construct matrices where parametric elements are == 1
     % This is necessary to build graph and recognise infeasible problems
     H_temp = qpData.H;
-    H_temp([sys.qcqpParams.H.maps2index]) = 1;
+    H_temp([self.qcqpParams.H.maps2index]) = 1;
     Aineq_temp = qpData.Aineq;
-    Aineq_temp([sys.qcqpParams.Aineq.maps2index]) = 1;
+    Aineq_temp([self.qcqpParams.Aineq.maps2index]) = 1;
     Aeq_temp = qpData.Aeq;
-    Aeq_temp([sys.qcqpParams.Aeq.maps2index]) = 1;
+    Aeq_temp([self.qcqpParams.Aeq.maps2index]) = 1;
     Q_temp = Q;
-    for i=1:numel(sys.qcqpParams.Q)
-        Q_temp{sys.qcqpParams.Q(i).maps2mat}(sys.qcqpParams.Q(i).maps2index) = 1;
+    for i=1:numel(self.qcqpParams.Q)
+        Q_temp{self.qcqpParams.Q(i).maps2mat}(self.qcqpParams.Q(i).maps2index) = 1;
     end
     l_temp = l;
-    for i=1:numel(sys.qcqpParams.l)
-        l_temp(sys.qcqpParams.l(i).maps2index,sys.qcqpParams.l(i).maps2mat) = 1;
+    for i=1:numel(self.qcqpParams.l)
+        l_temp(self.qcqpParams.l(i).maps2index,self.qcqpParams.l(i).maps2mat) = 1;
     end
 
     %% Warn the user if the problem is/might be infeasible
-    checkQcqpForInfeasibility( sys.qcqpParams,qpData.H,H_temp,Q,Q_temp,qpData.lb,qpData.ub );
+    checkQcqpForInfeasibility( self.qcqpParams,qpData.H,H_temp,Q,Q_temp,qpData.lb,qpData.ub );
 
     %% Generate standard stages
     % Construct (potentially multiple) path graphs from Qp
@@ -1006,40 +1010,40 @@ function [ sys ] = assembleStages( sys,qpData,solverOutputs, Q,l,r,paramVars,yal
     outputIdx = [];
     for i=1:numel(solverOutputs)
         outputVars = getvariables(solverOutputs{i});
-        outputIdx = [outputIdx find(ismember(sys.solverVars, outputVars))]; %#ok<AGROW>
+        outputIdx = [outputIdx find(ismember(self.solverVars, outputVars))]; %#ok<AGROW>
     end
 
     graphComponents = pathGraphsFromQcqp( H_temp,Aineq_temp,Aeq_temp,Q_temp,l_temp );
-    [graphComponents, sys.stages,sys.params,sys.standardParamValues,sys.forcesParamMap] = ...
-        stagesFromPathGraphs( graphComponents,qpData.H,qpData.f,qpData.Aineq,qpData.bineq,qpData.Aeq,qpData.beq,l,Q,r,qpData.lb,qpData.ub,sys.qcqpParams,yalmipParamMap,outputIdx );
+    [graphComponents, self.stages,self.params,self.standardParamValues,self.forcesParamMap] = ...
+        stagesFromPathGraphs( graphComponents,qpData.H,qpData.f,qpData.Aineq,qpData.bineq,qpData.Aeq,qpData.beq,l,Q,r,qpData.lb,qpData.ub,self.qcqpParams,yalmipParamMap,outputIdx );
     
-    sys.numSolvers = numel(sys.stages);
+    self.numSolvers = numel(self.stages);
     
     %% Assemble the rest of the FORCES parameters
     % Fake a parameter for each solver if there are none (we need one for FORCES)
-    sys.solverHasParams = zeros(1,sys.numSolvers);
-    for i=1:sys.numSolvers
-        if isempty(sys.params{i})
-            sys.params{i}(1) = newParam('p',1,'cost.f');
-            sys.standardParamValues{i} = sys.stages{i}(1).cost.f;
-            sys.stages{i}(1).cost.f = [];
+    self.solverHasParams = zeros(1,self.numSolvers);
+    for i=1:self.numSolvers
+        if isempty(self.params{i})
+            self.params{i}(1) = newParam('p',1,'cost.f');
+            self.standardParamValues{i} = self.stages{i}(1).cost.f;
+            self.stages{i}(1).cost.f = [];
         else % count params
-            sys.solverHasParams(i) = 1;
+            self.solverHasParams(i) = 1;
         end
     end
 
     % Mark solvers that contain binary variables
-    sys.solverIsBinary = zeros(1,sys.numSolvers);
-    if ~isempty(sys.qcqpParams.bidx) 
-        for i=1:sys.numSolvers
-            if any(ismember(cell2mat(graphComponents{i}.vertices),sys.qcqpParams.bidx))
-                sys.solverIsBinary(i) = 1;
+    self.solverIsBinary = zeros(1,self.numSolvers);
+    if ~isempty(self.qcqpParams.bidx) 
+        for i=1:self.numSolvers
+            if any(ismember(cell2mat(graphComponents{i}.vertices),self.qcqpParams.bidx))
+                self.solverIsBinary(i) = 1;
             end
         end
     end
 
     % Assemble outputs
-    sys = buildOutput( sys, solverOutputs,graphComponents,paramVars,yalmipParamMap );
+    self = buildOutput( self, solverOutputs,graphComponents,paramVars,yalmipParamMap );
 
 end
 
@@ -1095,36 +1099,36 @@ function [] = checkQcqpForInfeasibility( qcqpParams,H,H_temp,Q,Q_temp,lb,ub )
 end
 
 
-function [ sys ] = buildOutput( sys,solverOutputs,graphComponents,paramVars,yalmipParamMap )
+function [ self ] = buildOutput( self,solverOutputs,graphComponents,paramVars,yalmipParamMap )
 % Helper function that builds the output struct required for the FORCES
 % solver(s), an outputMap that allows to recover the wantend output
 % values from the solver output, an outputParamTable that allows the
 % usage of parameters in outputs
 
-    sys.outputFORCES = {};
+    self.outputFORCES = {};
     % we need to know which output to get from which solver
-    sys.outputMap = zeros(3,0); % 1st row: variable type (1=decision variable,2=parameter)
+    self.outputMap = zeros(3,0); % 1st row: variable type (1=decision variable,2=parameter)
     % 2nd row: index of solver/index of parameter value
     % 3rd row: index of output/index of element inside value matrix
 
-    o = ones(sys.numSolvers,1); % counter variable outputs
+    o = ones(self.numSolvers,1); % counter variable outputs
     p = 1; % counter parameters
     k = 1; % counter total number of outputs
     for i=1:numel(solverOutputs)
         outputVars = getvariables(solverOutputs{i});
-        sys.outputBase{i} = full(getbase(solverOutputs{i}));
-        sys.outputSize{i} = size(solverOutputs{i});
+        self.outputBase{i} = full(getbase(solverOutputs{i}));
+        self.outputSize{i} = size(solverOutputs{i});
         for j=1:length(outputVars)
-            idx = find(sys.solverVars == outputVars(j),1);
+            idx = find(self.solverVars == outputVars(j),1);
             if length(idx) == 1
                 [stage, state, component] = findVariableIndex(graphComponents,idx);
-                sys.outputFORCES{component}(o(component)) = newOutput(sprintf('o_%u',o(component)), stage, state);
-                sys.outputMap(:,end+1) = [1; component; o(component)];
+                self.outputFORCES{component}(o(component)) = newOutput(sprintf('o_%u',o(component)), stage, state);
+                self.outputMap(:,end+1) = [1; component; o(component)];
                 o(component) = o(component) + 1;
             else
                 idx = find(paramVars == outputVars(j),1);
                 if length(idx) == 1
-                    sys.outputMap(:,end+1) = [2; yalmipParamMap(:,idx)];
+                    self.outputMap(:,end+1) = [2; yalmipParamMap(:,idx)];
                     p = p+1;
                 else
                     error('Output is not valid. Only linear combinations of optimization variables and parameters are allowed.')
@@ -1133,7 +1137,7 @@ function [ sys ] = buildOutput( sys,solverOutputs,graphComponents,paramVars,yalm
             k = k + 1;
         end
     end
-    sys.lengthOutput = k-1;
+    self.lengthOutput = k-1;
     
 end
 
@@ -1206,33 +1210,33 @@ function [] = printStageSizes(stages, indentation)
 end
 
 
-function [ success ] = generateMexCode( sys )
+function [ success ] = generateMexCode( self )
 % Helper function to generate MEX code that is called when the solver is used.
 
     success = 1;
 
     disp('Generating C interface...');
     %generateSolverInterfaceCode(sys);
-    success = generateCInterfaceCode(sys) & success;
-    success = generateMEXInterfaceCode(sys) & success;
-    success = generateSimulinkInterfaceCode(sys) & success;
+    success = generateCInterfaceCode(self) & success;
+    success = generateMEXInterfaceCode(self) & success;
+    success = generateSimulinkInterfaceCode(self) & success;
 
     % Compile MEX code
     disp('Compiling MEX code for solver interface...');
-    success = compileSolverInterfaceCode(sys) & success;
+    success = compileSolverInterfaceCode(self) & success;
 
     % Generate help file
     disp('Writing help file...');
-    success = generateHelp(sys) & success;
+    success = generateHelp(self) & success;
 
-    if (~isfield(sys.default_codeoptions,'BuildSimulinkBlock') || sys.default_codeoptions.BuildSimulinkBlock ~= 0)
+    if (~isfield(self.default_codeoptions,'BuildSimulinkBlock') || self.default_codeoptions.BuildSimulinkBlock ~= 0)
         % Compile Simulink code (is optional)
         disp('Compiling Simulink code for solver interface...');
-        success = compileSimulinkInterfaceCode(sys) & success;
+        success = compileSimulinkInterfaceCode(self) & success;
 
         % Compile Simulink code
         disp('Generating Simulink Block...');
-        success = generateSimulinkBlock(sys) & success;
+        success = generateSimulinkBlock(self) & success;
     end
     
 end
