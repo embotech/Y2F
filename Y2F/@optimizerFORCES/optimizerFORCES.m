@@ -80,34 +80,15 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
     end
 
     % Prepare struct that is going to be converted into the optimizerFORCES class
-    sys = struct();
-
-    sys.codeoptions = codeoptions;
-    sys.parameters = parameters;
-    sys.paramNames = parameterNames;
-    sys.outputNames = outputNames;
+    sys = setupOptimizerForcesStruct( codeoptions,parameters,parameterNames,outputNames );
     
-    sys.qcqpParams = struct();
-    sys.stages = {};
-    sys.params = {};
-    sys.standardParamValues = {};
-    sys.forcesParamMap = {};
-    sys.outputFORCES = {};
-    sys.numSolvers = 0;
-    
-    sys.default_codeoptions = [];
-    sys.solverVars = [];
-    sys.paramSizes = [];
-    sys.numParams = 0;
-    sys.outputIsCell = 1;
-    sys.interfaceFunction = [];
-        
     [ sys,solverOutputs ] = sanitizeInputData( sys,solverOutputs, nargin,{inputname(4),inputname(5)} );
-
+    
     %% Call YALMIP and convert QP into FORCES format
     disp('This is Y2F (v0.1.18), the YALMIP interface of FORCES PRO.');
     disp('For more information visit https://github.com/embotech/y2f');
     fprintf('\nUsing YALMIP to convert problem into QP...')
+    
     tic;
     [ internalmodel,qpData ] = getQpAndModelFromYALMIP( constraint,objective );
     yalmipTime = toc;
@@ -205,10 +186,10 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
         end
     end
 
-    %% Generate solver using FORCES
-    disp('Generating solver using FORCES...')
+    %% Generate solver using FORCESPRO
+    disp('Generating solver using FORCESPRO...')
 
-    success = 1;
+    % adjusting user-defined codeoptions
     sys.default_codeoptions = sys.codeoptions;
     
     % set flag to let FORCES know that request came from Y2F
@@ -216,13 +197,17 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
     
     sys.codeoptions = cell(1,sys.numSolvers);
     for i=1:sys.numSolvers
-        % new name for each solver
         sys.codeoptions{i} = sys.default_codeoptions;
+        % new name for each solver
         sys.codeoptions{i}.name = sprintf('internal_%s_%u',sys.default_codeoptions.name,i);
         sys.codeoptions{i}.nohash = 1; % added by AD to avoid problem - exeprimental
-        success = generateCode( sys.stages{i},sys.params{i},sys.codeoptions{i},sys.outputFORCES{i} ) & success;
     end
 
+    % actually generate solver(s)
+    success = 1;
+    for i=1:sys.numSolvers
+        success = generateCode( sys.stages{i},sys.params{i},sys.codeoptions{i},sys.outputFORCES{i} ) & success;
+    end
     if ~success
         error('Code generation was not successful');
     end
@@ -232,33 +217,7 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
     sys = class(sys,'optimizerFORCES');
 
     %% Generate MEX code that is called when the solver is used
-    disp('Generating C interface...');
-    %generateSolverInterfaceCode(sys);
-    generateCInterfaceCode(sys);
-    generateMEXInterfaceCode(sys);
-    generateSimulinkInterfaceCode(sys);
-
-    % Compile MEX code
-    disp('Compiling MEX code for solver interface...');
-
-    compileSolverInterfaceCode(sys);
-
-    % Generate help file
-    disp('Writing help file...');
-
-    generateHelp(sys);
-
-    if (~isfield(sys.default_codeoptions,'BuildSimulinkBlock') || sys.default_codeoptions.BuildSimulinkBlock ~= 0)
-        % Compile Simulink code (is optional)
-        disp('Compiling Simulink code for solver interface...');
-
-        compileSimulinkInterfaceCode(sys);
-
-        % Compile Simulink code
-        disp('Generating Simulink Block...');
-
-        generateSimulinkBlock(sys);
-    end
+    generateMexCode( sys );
 
 end
 
@@ -266,6 +225,33 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % HELPER FUNCTIONS
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+function [ sys ] = setupOptimizerForcesStruct( codeoptions,parameters,parameterNames,outputNames )
+
+    sys = struct();
+
+    sys.codeoptions = codeoptions;
+    sys.parameters = parameters;
+    sys.paramNames = parameterNames;
+    sys.outputNames = outputNames;
+    
+    sys.qcqpParams = struct();
+    sys.stages = {};
+    sys.params = {};
+    sys.standardParamValues = {};
+    sys.forcesParamMap = {};
+    sys.outputFORCES = {};
+    sys.numSolvers = 0;
+    
+    sys.default_codeoptions = [];
+    sys.solverVars = [];
+    sys.paramSizes = [];
+    sys.numParams = 0;
+    sys.outputIsCell = 1;
+    sys.interfaceFunction = [];
+    
+end
+
 
 function [ sys,solverOutputs ] = sanitizeInputData( sys,solverOutputs, nArgIn,inputNames )
 
@@ -1202,4 +1188,34 @@ function [] = printStageSizes(stages, indentation)
     end
     fprintf('\n');
 
+end
+
+
+function [] = generateMexCode( sys )
+
+%% Generate MEX code that is called when the solver is used
+    disp('Generating C interface...');
+    %generateSolverInterfaceCode(sys);
+    generateCInterfaceCode(sys);
+    generateMEXInterfaceCode(sys);
+    generateSimulinkInterfaceCode(sys);
+
+    % Compile MEX code
+    disp('Compiling MEX code for solver interface...');
+    compileSolverInterfaceCode(sys);
+
+    % Generate help file
+    disp('Writing help file...');
+    generateHelp(sys);
+
+    if (~isfield(sys.default_codeoptions,'BuildSimulinkBlock') || sys.default_codeoptions.BuildSimulinkBlock ~= 0)
+        % Compile Simulink code (is optional)
+        disp('Compiling Simulink code for solver interface...');
+        compileSimulinkInterfaceCode(sys);
+
+        % Compile Simulink code
+        disp('Generating Simulink Block...');
+        generateSimulinkBlock(sys);
+    end
+    
 end
