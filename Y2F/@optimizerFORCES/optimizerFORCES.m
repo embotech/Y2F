@@ -79,8 +79,8 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
         error('YALMIP could not be found. Please make sure it is installed correctly.')
     end
 
-    % Prepare struct that is going to be converted into the optimizerFORCES class
     sys = setupOptimizerForcesStruct( codeoptions,parameters,parameterNames,outputNames );
+    %sys = class(sys,'optimizerFORCES');
     
     [ sys,solverOutputs ] = sanitizeInputData( sys,solverOutputs, nargin,{inputname(4),inputname(5)} );
     
@@ -90,7 +90,7 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
     fprintf('\nUsing YALMIP to convert problem into QP...')
     
     tic;
-    [ internalmodel,qpData ] = getQpAndModelFromYALMIP( constraint,objective );
+    [ qpData,internalmodel ] = getQpAndModelFromYALMIP( constraint,objective );
     yalmipTime = toc;
     fprintf('   [OK, %5.1f sec]\n', yalmipTime);
 
@@ -102,7 +102,7 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
 
     fprintf('Extract parameters and quadratic inequalities from YALMIP model...')
     tic;
-    [ sys,Q,l,r,paramVars,yalmipParamMap,qpData ] = buildParamsAndQuadIneqs( sys,internalmodel,qpData );
+    [ sys,qpData, Q,l,r,paramVars,yalmipParamMap ] = buildParamsAndQuadIneqs( sys,qpData,internalmodel );
     extractStagesTime = toc;
     fprintf('   [OK, %5.1f sec]\n', extractStagesTime);
 
@@ -132,8 +132,8 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
     %% Generate standard stages
     % Construct (potentially multiple) path graphs from Qp
 
-    % Compute decision variable indices that are needed in output (only
-    % relevant for separable problems)
+    % Compute decision variable indices that are needed in output
+    % (only relevant for separable problems)
     outputIdx = [];
     for i=1:numel(solverOutputs)
         outputVars = getvariables(solverOutputs{i});
@@ -189,12 +189,12 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
     %% Generate solver using FORCESPRO
     disp('Generating solver using FORCESPRO...')
 
-    % adjusting user-defined codeoptions
+    % backing up user-defined codeoptions
     sys.default_codeoptions = sys.codeoptions;
     
     % set flag to let FORCES know that request came from Y2F
     sys.default_codeoptions.interface = 'y2f';
-    
+        
     sys.codeoptions = cell(1,sys.numSolvers);
     for i=1:sys.numSolvers
         sys.codeoptions{i} = sys.default_codeoptions;
@@ -202,6 +202,8 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
         sys.codeoptions{i}.name = sprintf('internal_%s_%u',sys.default_codeoptions.name,i);
         sys.codeoptions{i}.nohash = 1; % added by AD to avoid problem - exeprimental
     end
+    
+    sys.interfaceFunction = str2func(sys.default_codeoptions.name);
 
     % actually generate solver(s)
     success = 1;
@@ -213,7 +215,6 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
     end
 
     %% Store temporary data in object
-    sys.interfaceFunction = str2func(sys.default_codeoptions.name);
     sys = class(sys,'optimizerFORCES');
 
     %% Generate MEX code that is called when the solver is used
@@ -227,6 +228,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 function [ sys ] = setupOptimizerForcesStruct( codeoptions,parameters,parameterNames,outputNames )
+% Helper function to setup struct that is going to be converted into the optimizerFORCES class
 
     sys = struct();
 
@@ -241,6 +243,10 @@ function [ sys ] = setupOptimizerForcesStruct( codeoptions,parameters,parameterN
     sys.standardParamValues = {};
     sys.forcesParamMap = {};
     sys.outputFORCES = {};
+    sys.outputMap = [];
+    sys.outputBase = {};
+    sys.outputSize = {};
+    %sys.lengthOutput = 0;
     sys.numSolvers = 0;
     
     sys.default_codeoptions = [];
@@ -417,15 +423,15 @@ function [ qpData ] = sanitizeQpData( qpData )
 end
 
 
-function [ internalmodel,qpData ] = getQpAndModelFromYALMIP( constraint,objective )
+function [ qpData,internalmodel ] = getQpAndModelFromYALMIP( constraint,objective )
 % Helper function that uses YALMIP to create Qp from user's constraints
 % and objective. Parameters and quadratic constraints are ignored for
 % now and handled later on.
 
-% Call YALMIP's export
-% model contains Qp (in quadprog format)
-% internalmodel contains data that we need to recover parameters and
-% quadratic inequalities
+    % Call YALMIP's export
+    % model contains Qp (in quadprog format)
+    % internalmodel contains data that we need to recover parameters and
+    % quadratic inequalities
     options = sdpsettings('solver','+quadprog','verbose',2);
 
     % Hack: Get YALMIP to return sparse matrices
@@ -470,7 +476,7 @@ function [ internalmodel,qpData ] = getQpAndModelFromYALMIP( constraint,objectiv
 end
 
 
-function [ sys,Q,l,r,paramVars,yalmipParamMap,qpData ] = buildParamsAndQuadIneqs( sys,internalmodel,qpData )
+function [ sys,qpData,Q,l,r,paramVars,yalmipParamMap ] = buildParamsAndQuadIneqs( sys,qpData,internalmodel )
 % Helper function that builds QCQp parameter list and recognises
 % quadratic inequalities
 
@@ -1192,8 +1198,8 @@ end
 
 
 function [] = generateMexCode( sys )
+% Helper function to generate MEX code that is called when the solver is used.
 
-%% Generate MEX code that is called when the solver is used
     disp('Generating C interface...');
     %generateSolverInterfaceCode(sys);
     generateCInterfaceCode(sys);
