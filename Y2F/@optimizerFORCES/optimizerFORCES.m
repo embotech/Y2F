@@ -83,8 +83,11 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
     sys = struct();
     sys.outputIsCell = 1;
     
-    [ codeoptions,parameters,solverOutputs,parameterNames,outputNames,sys ] = ...
-        sanitizeInputData( codeoptions,parameters,solverOutputs,parameterNames,outputNames,sys, nargin,{inputname(4),inputname(5)} );
+    sys.paramNames = parameterNames;
+    sys.outputNames = outputNames;
+    
+    [ sys, codeoptions,parameters,solverOutputs ] = ...
+        sanitizeInputData( sys, codeoptions,parameters,solverOutputs, nargin,{inputname(4),inputname(5)} );
 
     %% Call YALMIP and convert QP into FORCES format
     disp('This is Y2F (v0.1.18), the YALMIP interface of FORCES PRO.');
@@ -210,8 +213,6 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
     sys.stages = stages;
     sys.numSolvers = numel(stages);
     sys.params = params;
-    sys.paramNames = parameterNames;
-    sys.outputNames = outputNames;
     sys.outputFORCES = outputFORCES;
     sys.qcqpParams = qcqpParams;
     sys.standardParamValues = standardParamValues;
@@ -260,7 +261,7 @@ end
 % HELPER FUNCTIONS
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-function [ codeoptions,parameters,solverOutputs,parameterNames,outputNames,sys ] = sanitizeInputData( codeoptions,parameters,solverOutputs,parameterNames,outputNames,sys, nArgIn,inputNames )
+function [ sys,codeoptions,parameters,solverOutputs ] = sanitizeInputData( sys,codeoptions,parameters,solverOutputs, nArgIn,inputNames )
 
     % We need all arguments
     switch nArgIn
@@ -290,65 +291,65 @@ function [ codeoptions,parameters,solverOutputs,parameterNames,outputNames,sys ]
 
     % Read parameter names if they were passed along
     if (nArgIn >= 6)
-        if ~iscellstr(parameterNames) %#ok<ISCLSTR>
+        if ~iscellstr(sys.paramNames)
             error('parameterNames needs to be a cell array of strings.')
         end
 
         % Fix names (make them valid and unique)
         if ~verLessThan('matlab', '8.3')
-            parameterNames = matlab.lang.makeValidName(parameterNames);
-            parameterNames = matlab.lang.makeUniqueStrings(parameterNames);
+            sys.paramNames = matlab.lang.makeValidName(sys.paramNames);
+            sys.paramNames = matlab.lang.makeUniqueStrings(sys.paramNames);
         else
-            parameterNames = genvarname(parameterNames);
+            sys.paramNames = genvarname(sys.paramNames);
         end
     elseif isa(solverOutputs,'sdpvar')
         % Single parameter supplied, we might get its name!
         name = inputNames{1};
         if ~isempty(name)
-            parameterNames = {name};
+            sys.paramNames = {name};
         else
-            parameterNames = {};
+            sys.paramNames = {};
             warning('Y2F:noParameterNames',['No parameter names specified for solver. We recommend adding names for better code documentation. ' ...
             'For more info type ''help optimizerFORCES''.']);
         end
     else
-        parameterNames = {};
+        sys.paramNames = {};
         warning('Y2F:noParameterNames',['No parameter names specified for solver. We recommend adding names for better code documentation. ' ...
             'For more info type ''help optimizerFORCES''.']);
     end
 
     % Read output names if they were passed along
     if (nArgIn >= 7)
-        if ~iscellstr(parameterNames) %#ok<ISCLSTR>
+        if ~iscellstr(sys.paramNames)
             error('outputNames needs to be a cell array of strings.')
         end
 
         % Fix names (make them valid and unique)
         if ~verLessThan('matlab', '8.3')
-            outputNames = matlab.lang.makeValidName(outputNames);
-            outputNames = matlab.lang.makeUniqueStrings(outputNames);
+            sys.outputNames = matlab.lang.makeValidName(sys.outputNames);
+            sys.outputNames = matlab.lang.makeUniqueStrings(sys.outputNames);
         else
-            outputNames = genvarname(outputNames);
+            sys.outputNames = genvarname(sys.outputNames);
         end
     elseif isa(solverOutputs,'sdpvar')
         % Single output supplied, we might get its name!
         name = inputNames{2};
         if ~isempty(name)
-            outputNames = {name};
+            sys.outputNames = {name};
         else
-            outputNames = {};
+            sys.outputNames = {};
             warning('Y2F:noOutputNames',['No output names specified for solver. We recommend adding names for better code documentation. ' ...
             'For more info type ''help optimizerFORCES''.']);
         end
     else
-        outputNames = {};
+        sys.outputNames = {};
         warning('Y2F:noOutputNames',['No output names specified for solver. We recommend adding names for better code documentation. ' ...
             'For more info type ''help optimizerFORCES''.']);
     end
 
     % Create missing parameter names
-    while numel(parameterNames) < numel(parameters)
-        parameterNames{end+1} = sprintf('param%u', numel(parameterNames)+1); %#ok<AGROW>
+    while numel(sys.paramNames) < numel(parameters)
+        sys.paramNames{end+1} = sprintf('param%u', numel(sys.paramNames)+1);
     end
 
     % We allow single parameters --> wrap them in a cell array
@@ -362,8 +363,8 @@ function [ codeoptions,parameters,solverOutputs,parameterNames,outputNames,sys ]
     end
 
     % Create missing parameter names
-    while numel(outputNames) < numel(solverOutputs)
-        outputNames{end+1} = sprintf('output%u', numel(outputNames)+1); %#ok<AGROW>
+    while numel(sys.outputNames) < numel(solverOutputs)
+        sys.outputNames{end+1} = sprintf('output%u', numel(sys.outputNames)+1);
     end
 
 end
