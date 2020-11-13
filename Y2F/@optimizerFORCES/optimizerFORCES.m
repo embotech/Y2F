@@ -79,9 +79,7 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
         error('YALMIP could not be found. Please make sure it is installed correctly.')
     end
 
-    sys = setupOptimizerForcesStruct( codeoptions,parameters,parameterNames,outputNames );
-    %sys = class(sys,'optimizerFORCES');
-    
+    sys = setupOptimizerForcesClass( codeoptions,parameters,parameterNames,outputNames );
     [ sys,solverOutputs ] = sanitizeInputData( sys,solverOutputs, nargin,{inputname(4),inputname(5)} );
     
     %% Call YALMIP and convert QP into FORCES format
@@ -99,78 +97,16 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
     %% Assemble parameters & convert quadratic variables
     % Quadratic inequalities are not recognized by YALMIP
     % Information is stored in internalmodel
-
     fprintf('Extract parameters and quadratic inequalities from YALMIP model...')
     tic;
     [ sys,qpData, Q,l,r,paramVars,yalmipParamMap ] = buildParamsAndQuadIneqs( sys,qpData,internalmodel );
     extractStagesTime = toc;
     fprintf('   [OK, %5.1f sec]\n', extractStagesTime);
 
-    %%
+    %% Assemble stages
     fprintf('Assembling stages...')
     tic;
-    % Construct matrices where parametric elements are == 1
-    % This is necessary to build graph and recognise infeasible problems
-    H_temp = qpData.H;
-    H_temp([sys.qcqpParams.H.maps2index]) = 1;
-    Aineq_temp = qpData.Aineq;
-    Aineq_temp([sys.qcqpParams.Aineq.maps2index]) = 1;
-    Aeq_temp = qpData.Aeq;
-    Aeq_temp([sys.qcqpParams.Aeq.maps2index]) = 1;
-    Q_temp = Q;
-    for i=1:numel(sys.qcqpParams.Q)
-        Q_temp{sys.qcqpParams.Q(i).maps2mat}(sys.qcqpParams.Q(i).maps2index) = 1;
-    end
-    l_temp = l;
-    for i=1:numel(sys.qcqpParams.l)
-        l_temp(sys.qcqpParams.l(i).maps2index,sys.qcqpParams.l(i).maps2mat) = 1;
-    end
-
-    %% Warn the user if the problem is/might be infeasible
-    checkQcqpForInfeasibility( sys.qcqpParams,qpData.H,H_temp,Q,Q_temp,qpData.lb,qpData.ub );
-
-    %% Generate standard stages
-    % Construct (potentially multiple) path graphs from Qp
-
-    % Compute decision variable indices that are needed in output
-    % (only relevant for separable problems)
-    outputIdx = [];
-    for i=1:numel(solverOutputs)
-        outputVars = getvariables(solverOutputs{i});
-        outputIdx = [outputIdx find(ismember(sys.solverVars, outputVars))]; %#ok<AGROW>
-    end
-
-    graphComponents = pathGraphsFromQcqp( H_temp,Aineq_temp,Aeq_temp,Q_temp,l_temp );
-    [graphComponents, sys.stages, sys.params,sys.standardParamValues,sys.forcesParamMap] = ...
-        stagesFromPathGraphs( graphComponents,qpData.H,qpData.f,qpData.Aineq,qpData.bineq,qpData.Aeq,qpData.beq,l,Q,r,qpData.lb,qpData.ub,sys.qcqpParams,yalmipParamMap,outputIdx );
-    
-    sys.numSolvers = numel(sys.stages);
-
-    %% Assemble the rest of the FORCES parameters
-    % Fake a parameter for each solver if there are none (we need one for FORCES)
-    sys.solverHasParams = zeros(1,sys.numSolvers);
-    for i=1:sys.numSolvers
-        if isempty(sys.params{i})
-            sys.params{i}(1) = newParam('p',1,'cost.f');
-            sys.standardParamValues{i} = sys.stages{i}(1).cost.f;
-            sys.stages{i}(1).cost.f = [];
-        else % count params
-            sys.solverHasParams(i) = 1;
-        end
-    end
-
-    % Mark solvers that contain binary variables
-    sys.solverIsBinary = zeros(1,sys.numSolvers);
-    if ~isempty(sys.qcqpParams.bidx) 
-        for i=1:sys.numSolvers
-            if any(ismember(cell2mat(graphComponents{i}.vertices),sys.qcqpParams.bidx))
-                sys.solverIsBinary(i) = 1;
-            end
-        end
-    end
-
-    %% Assemble outputs
-    sys = buildOutput( sys, solverOutputs,graphComponents,paramVars,yalmipParamMap );
+    sys = assembleStages( sys,qpData,solverOutputs, Q,l,r,paramVars,yalmipParamMap );
     assembleStagesTime = toc;
     fprintf('   [OK, %5.1f sec]\n', assembleStagesTime);
 
@@ -214,9 +150,6 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
         error('Code generation was not successful');
     end
 
-    %% Store temporary data in object
-    sys = class(sys,'optimizerFORCES');
-
     %% Generate MEX code that is called when the solver is used
     generateMexCode( sys );
 
@@ -227,8 +160,8 @@ end
 % HELPER FUNCTIONS
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-function [ sys ] = setupOptimizerForcesStruct( codeoptions,parameters,parameterNames,outputNames )
-% Helper function to setup struct that is going to be converted into the optimizerFORCES class
+function [ sys ] = setupOptimizerForcesClass( codeoptions,parameters,parameterNames,outputNames )
+% Helper function to setup struct that is going to be converted into the optimizerFORCES class.
 
     sys = struct();
 
@@ -246,20 +179,25 @@ function [ sys ] = setupOptimizerForcesStruct( codeoptions,parameters,parameterN
     sys.outputMap = [];
     sys.outputBase = {};
     sys.outputSize = {};
-    %sys.lengthOutput = 0;
+    sys.lengthOutput = 0;
     sys.numSolvers = 0;
-    
+
     sys.default_codeoptions = [];
+    sys.solverHasParams = [];
+    sys.solverIsBinary = [];
     sys.solverVars = [];
     sys.paramSizes = [];
     sys.numParams = 0;
     sys.outputIsCell = 1;
     sys.interfaceFunction = [];
     
+    sys = class(sys,'optimizerFORCES');
+    
 end
 
 
 function [ sys,solverOutputs ] = sanitizeInputData( sys,solverOutputs, nArgIn,inputNames )
+% Helper function to make sure certain user input is given in the correct format.
 
     % We need all arguments
     switch nArgIn
@@ -369,6 +307,8 @@ end
 
 
 function [ qpData ] = sanitizeQpData( qpData )
+% Helper function to perform sanity checks on QP data that
+% throws errors or warnings if an issue is detected.
 
     % Check if matrices are numeric
     if ~isnumeric(qpData.H) || ~isnumeric(qpData.f)
@@ -1032,6 +972,75 @@ function [ k,quadIneq,Q,l,r ] = findOrCreateQuadraticInequality( rowIdx,quadIneq
         quadIneq(:,end+1) = [rowIdx;k];
     end
     
+end
+
+
+function [ sys ] = assembleStages( sys,qpData,solverOutputs, Q,l,r,paramVars,yalmipParamMap )
+% Helper function to setup stages that are used to generate FORCESPRO solvers.
+
+    % Construct matrices where parametric elements are == 1
+    % This is necessary to build graph and recognise infeasible problems
+    H_temp = qpData.H;
+    H_temp([sys.qcqpParams.H.maps2index]) = 1;
+    Aineq_temp = qpData.Aineq;
+    Aineq_temp([sys.qcqpParams.Aineq.maps2index]) = 1;
+    Aeq_temp = qpData.Aeq;
+    Aeq_temp([sys.qcqpParams.Aeq.maps2index]) = 1;
+    Q_temp = Q;
+    for i=1:numel(sys.qcqpParams.Q)
+        Q_temp{sys.qcqpParams.Q(i).maps2mat}(sys.qcqpParams.Q(i).maps2index) = 1;
+    end
+    l_temp = l;
+    for i=1:numel(sys.qcqpParams.l)
+        l_temp(sys.qcqpParams.l(i).maps2index,sys.qcqpParams.l(i).maps2mat) = 1;
+    end
+
+    %% Warn the user if the problem is/might be infeasible
+    checkQcqpForInfeasibility( sys.qcqpParams,qpData.H,H_temp,Q,Q_temp,qpData.lb,qpData.ub );
+
+    %% Generate standard stages
+    % Construct (potentially multiple) path graphs from Qp
+
+    % Compute decision variable indices that are needed in output
+    % (only relevant for separable problems)
+    outputIdx = [];
+    for i=1:numel(solverOutputs)
+        outputVars = getvariables(solverOutputs{i});
+        outputIdx = [outputIdx find(ismember(sys.solverVars, outputVars))]; %#ok<AGROW>
+    end
+
+    graphComponents = pathGraphsFromQcqp( H_temp,Aineq_temp,Aeq_temp,Q_temp,l_temp );
+    [graphComponents, sys.stages,sys.params,sys.standardParamValues,sys.forcesParamMap] = ...
+        stagesFromPathGraphs( graphComponents,qpData.H,qpData.f,qpData.Aineq,qpData.bineq,qpData.Aeq,qpData.beq,l,Q,r,qpData.lb,qpData.ub,sys.qcqpParams,yalmipParamMap,outputIdx );
+    
+    sys.numSolvers = numel(sys.stages);
+    
+    %% Assemble the rest of the FORCES parameters
+    % Fake a parameter for each solver if there are none (we need one for FORCES)
+    sys.solverHasParams = zeros(1,sys.numSolvers);
+    for i=1:sys.numSolvers
+        if isempty(sys.params{i})
+            sys.params{i}(1) = newParam('p',1,'cost.f');
+            sys.standardParamValues{i} = sys.stages{i}(1).cost.f;
+            sys.stages{i}(1).cost.f = [];
+        else % count params
+            sys.solverHasParams(i) = 1;
+        end
+    end
+
+    % Mark solvers that contain binary variables
+    sys.solverIsBinary = zeros(1,sys.numSolvers);
+    if ~isempty(sys.qcqpParams.bidx) 
+        for i=1:sys.numSolvers
+            if any(ismember(cell2mat(graphComponents{i}.vertices),sys.qcqpParams.bidx))
+                sys.solverIsBinary(i) = 1;
+            end
+        end
+    end
+
+    % Assemble outputs
+    sys = buildOutput( sys, solverOutputs,graphComponents,paramVars,yalmipParamMap );
+
 end
 
 
