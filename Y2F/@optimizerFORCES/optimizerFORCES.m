@@ -71,6 +71,35 @@ function [self, success] = optimizerFORCES( constraint,objective,codeoptions,par
 %
 % (c) Gian Ulli and embotech AG, Zurich, Switzerland, 2013-2020.
 
+    if (nargin < 1)
+        constraint = [];
+    end
+    if (nargin < 2)
+        objective = [];
+    end
+    if (nargin < 3)
+        codeoptions = [];
+    end
+    if (nargin < 4)
+        parameters = [];
+    end
+    if (nargin < 5)
+        solverOutputs = [];
+    end
+    if (nargin < 6)
+        parameterNames = {};
+    end
+    if (nargin < 7)
+        outputNames = {};
+    end    
+
+    self = setupOptimizerForcesClass( codeoptions,parameters,parameterNames,outputNames );
+    
+    % check for class constructor call
+    if (nargin == 0) && (nargout <= 1)
+        return;
+    end
+
     disp('YALMIP-to-FORCES code generator')
     disp('-------------------------------')
 
@@ -79,8 +108,12 @@ function [self, success] = optimizerFORCES( constraint,objective,codeoptions,par
         error('YALMIP could not be found. Please make sure it is installed correctly.')
     end
 
-    self = setupOptimizerForcesClass( codeoptions,parameters,parameterNames,outputNames );
-    [ self,solverOutputs ] = sanitizeInputData( self,solverOutputs, nargin,{inputname(4),inputname(5)} );
+    if (nargin >= 5)
+        inputNames = {inputname(4),inputname(5)};
+    else
+        inputNames = {'',''};
+    end
+    [ self,solverOutputs ] = sanitizeInputData( self,solverOutputs, constraint,objective,inputNames );
     
     %% Call YALMIP and convert QP into FORCES format
     disp('This is Y2F (v0.1.18), the YALMIP interface of FORCES PRO.');
@@ -186,21 +219,24 @@ function [ self ] = setupOptimizerForcesClass( codeoptions,parameters,parameterN
 end
 
 
-function [ self,solverOutputs ] = sanitizeInputData( self,solverOutputs, nArgIn,inputNames )
+function [ self,solverOutputs ] = sanitizeInputData( self,solverOutputs, constraint,objective,inputNames )
 % Helper function to make sure certain user input is given in the correct format.
 
-    % We need all arguments
-    switch nArgIn
-        case 0
-            error('Constraints not found')
-        case 1
-            error('Objective not found')
-        case 2
-            error('Solver options not found')
-        case 3
-            error('Parameter(s) not found')
-        case 4
-            error('Output(s) not found')
+    % We need all those arguments
+    if isempty(constraint)
+        error('Constraints not found');
+    end
+    if isempty(objective)
+        error('Objective not found');
+    end
+    if isempty(self.codeoptions)
+        error('Solver options not found');
+    end
+    if isempty(self.parameters)
+        error('Parameter(s) not found');
+    end
+    if isempty(solverOutputs)
+        error('Output(s) not found');
     end
 
     % Make valid solver name
@@ -216,7 +252,7 @@ function [ self,solverOutputs ] = sanitizeInputData( self,solverOutputs, nArgIn,
     end
 
     % Read parameter names if they were passed along
-    if (nArgIn >= 6)
+    if ~isempty(self.paramNames)
         if ~iscellstr(self.paramNames)
             error('parameterNames needs to be a cell array of strings.')
         end
@@ -245,8 +281,8 @@ function [ self,solverOutputs ] = sanitizeInputData( self,solverOutputs, nArgIn,
     end
 
     % Read output names if they were passed along
-    if (nArgIn >= 7)
-        if ~iscellstr(self.paramNames)
+    if ~isempty(self.outputNames)
+        if ~iscellstr(self.outputNames)
             error('outputNames needs to be a cell array of strings.')
         end
 
