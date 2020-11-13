@@ -122,9 +122,7 @@ function [self, success] = optimizerFORCES( constraint,objective,codeoptions,par
         end
     end
 
-    %% Generate solver using FORCESPRO
-    disp('Generating solver using FORCESPRO...')
-
+    %% Adjust user-defined codeoptions
     % backing up user-defined codeoptions
     self.default_codeoptions = self.codeoptions;
     
@@ -141,17 +139,9 @@ function [self, success] = optimizerFORCES( constraint,objective,codeoptions,par
     
     self.interfaceFunction = str2func(self.default_codeoptions.name);
 
-    % actually generate solver(s)
-    success = 1;
-    for i=1:self.numSolvers
-        success = generateCode( self.stages{i},self.params{i},self.codeoptions{i},self.outputFORCES{i} ) & success;
-    end
-    if ~success
-        error('Code generation was not successful');
-    end
-
-    %% Generate MEX code that is called when the solver is used
-    generateMexCode( self );
+    %% Generate solver using FORCESPRO
+    disp('Generating solver using FORCESPRO...')
+    success = buildSolver( self );
 
 end
 
@@ -1207,36 +1197,4 @@ function [] = printStageSizes(stages, indentation)
     end
     fprintf('\n');
 
-end
-
-
-function [ success ] = generateMexCode( self )
-% Helper function to generate MEX code that is called when the solver is used.
-
-    success = 1;
-
-    disp('Generating C interface...');
-    %generateSolverInterfaceCode(sys);
-    success = generateCInterfaceCode(self) & success;
-    success = generateMEXInterfaceCode(self) & success;
-    success = generateSimulinkInterfaceCode(self) & success;
-
-    % Compile MEX code
-    disp('Compiling MEX code for solver interface...');
-    success = compileSolverInterfaceCode(self) & success;
-
-    % Generate help file
-    disp('Writing help file...');
-    success = generateHelp(self) & success;
-
-    if (~isfield(self.default_codeoptions,'BuildSimulinkBlock') || self.default_codeoptions.BuildSimulinkBlock ~= 0)
-        % Compile Simulink code (is optional)
-        disp('Compiling Simulink code for solver interface...');
-        success = compileSimulinkInterfaceCode(self) & success;
-
-        % Compile Simulink code
-        disp('Generating Simulink Block...');
-        success = generateSimulinkBlock(self) & success;
-    end
-    
 end
