@@ -18,21 +18,21 @@ else
 end
 
 % Check if FORCES solver has been generated
-if ~isdir(self.codeoptions{1}.name) && ~isdir(solverName)
+if ~isfolder(self.codeoptions{1}.name) && ~isfolder(solverName)
     error('Solver ''%s'' has not been generated!', solverName)
 end
 
 % Make directories
-if ~isdir(solverName)
+if ~isfolder(solverName)
     mkdir(solverName)
 end
-if ~isdir([solverName '/interface'])
+if ~isfolder([solverName '/interface'])
     mkdir([solverName '/interface'])
 end
-if ~isdir([solverName '/include'])
+if ~isfolder([solverName '/include'])
     mkdir([solverName '/include'])
 end
-if ~isdir([solverName '/solvers'])
+if ~isfolder([solverName '/solvers'])
     mkdir([solverName '/solvers'])
 end
 
@@ -600,4 +600,3 @@ fclose(cFileID);
 success = 1;
 
 end
-

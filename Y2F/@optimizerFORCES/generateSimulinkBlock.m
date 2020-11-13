@@ -13,7 +13,7 @@ success = 0;
 solverName = self.default_codeoptions.name;
 
 % Check if FORCES solver has been generated
-if ~isdir(solverName)
+if ~isfolder(solverName)
     error('Solver ''%s'' has not been generated!', solverName)
 end
 
@@ -141,4 +141,3 @@ filename = save_system(library);
 close_system(library, 0);
 
 end
-

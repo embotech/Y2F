@@ -18,7 +18,7 @@ else
 end
 
 % Check if FORCES solver has been generated
-if ~isdir(solverName)
+if ~isfolder(solverName)
     error('Solver ''%s'' has not been generated!', solverName)
 end
 
@@ -392,4 +392,3 @@ fclose(fileID);
 success = 1;
 
 end
-
