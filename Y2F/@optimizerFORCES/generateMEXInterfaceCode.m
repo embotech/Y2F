@@ -1,4 +1,4 @@
-function success = generateMEXInterfaceCode( self )
+function [ success ] = generateMEXInterfaceCode( self )
 %GENERATEMEXINTERFACECODE generates MEX C code that will prepare the
 %parameters for the FORCES solver. It also assembles the correct outputs.
 %

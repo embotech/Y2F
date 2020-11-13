@@ -1,4 +1,4 @@
-function success = generateSimulinkInterfaceCode( self )
+function [ success ] = generateSimulinkInterfaceCode( self )
 %GENERATESIMULINKINTERFACECODE generates a C file with an S-function for
 %use in a Simulink model.
 %

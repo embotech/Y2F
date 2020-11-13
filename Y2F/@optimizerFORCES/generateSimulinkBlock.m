@@ -1,4 +1,4 @@
-function generateSimulinkBlock( self )
+function [ success ] = generateSimulinkBlock( self )
 %GENERATESIMULINKBLOCK Create a model containing a Simulink block for the
 %solver
 %
@@ -139,5 +139,7 @@ set_param([library '/' block], 'MaskHelp', help);
 set_param(library,'EnableLBRepository','on'); % enable library in browser
 filename = save_system(library);
 close_system(library, 0);
+
+success = 1;
 
 end

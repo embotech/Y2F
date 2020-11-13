@@ -1206,31 +1206,33 @@ function [] = printStageSizes(stages, indentation)
 end
 
 
-function [] = generateMexCode( sys )
+function [ success ] = generateMexCode( sys )
 % Helper function to generate MEX code that is called when the solver is used.
+
+    success = 1;
 
     disp('Generating C interface...');
     %generateSolverInterfaceCode(sys);
-    generateCInterfaceCode(sys);
-    generateMEXInterfaceCode(sys);
-    generateSimulinkInterfaceCode(sys);
+    success = generateCInterfaceCode(sys) & success;
+    success = generateMEXInterfaceCode(sys) & success;
+    success = generateSimulinkInterfaceCode(sys) & success;
 
     % Compile MEX code
     disp('Compiling MEX code for solver interface...');
-    compileSolverInterfaceCode(sys);
+    success = compileSolverInterfaceCode(sys) & success;
 
     % Generate help file
     disp('Writing help file...');
-    generateHelp(sys);
+    success = generateHelp(sys) & success;
 
     if (~isfield(sys.default_codeoptions,'BuildSimulinkBlock') || sys.default_codeoptions.BuildSimulinkBlock ~= 0)
         % Compile Simulink code (is optional)
         disp('Compiling Simulink code for solver interface...');
-        compileSimulinkInterfaceCode(sys);
+        success = compileSimulinkInterfaceCode(sys) & success;
 
         % Compile Simulink code
         disp('Generating Simulink Block...');
-        generateSimulinkBlock(sys);
+        success = generateSimulinkBlock(sys) & success;
     end
     
 end

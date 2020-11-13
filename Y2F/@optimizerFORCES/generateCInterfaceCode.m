@@ -1,4 +1,4 @@
-function success = generateCInterfaceCode( self )
+function [ success ] = generateCInterfaceCode( self )
 %GENERATECINTERFACECODE generates C code that will prepare the user-defined
 %parameters for the FORCES solver. It also assembles the correct outputs.
 %
@@ -589,7 +589,6 @@ for i=1:numel(self.outputBase) % every output has a base
     end
     mapOffset = mapOffset + size(base,1);
 end
-
 
 fprintf(cFileID, '\treturn exitflag;\n');
 fprintf(cFileID, '}'); % end of mex-function
