@@ -81,13 +81,17 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
 
     % Prepare struct that is going to be converted into the optimizerFORCES class
     sys = struct();
-    sys.outputIsCell = 1;
-    
+
+    sys.parameters = parameters;
     sys.paramNames = parameterNames;
     sys.outputNames = outputNames;
     
-    [ sys, codeoptions,parameters,solverOutputs ] = ...
-        sanitizeInputData( sys, codeoptions,parameters,solverOutputs, nargin,{inputname(4),inputname(5)} );
+    sys.solverVars = [];
+    sys.outputIsCell = 1;
+    sys.paramSizes = [];
+    sys.numParams = 0;
+        
+    [ sys,codeoptions,solverOutputs ] = sanitizeInputData( sys,codeoptions,solverOutputs, nargin,{inputname(4),inputname(5)} );
 
     %% Call YALMIP and convert QP into FORCES format
     disp('This is Y2F (v0.1.18), the YALMIP interface of FORCES PRO.');
@@ -106,7 +110,7 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
 
     fprintf('Extract parameters and quadratic inequalities from YALMIP model...')
     tic;
-    [ sys,qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap,qpData ] = buildParamsAndQuadIneqs( parameters,sys,internalmodel,qpData );
+    [ sys,qcqpParams,Q,l,r,paramVars,yalmipParamMap,qpData ] = buildParamsAndQuadIneqs( sys,internalmodel,qpData );
     extractStagesTime = toc;
     fprintf('   [OK, %5.1f sec]\n', extractStagesTime);
 
@@ -141,7 +145,7 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
     outputIdx = [];
     for i=1:numel(solverOutputs)
         outputVars = getvariables(solverOutputs{i});
-        outputIdx = [outputIdx find(ismember(solverVars, outputVars))]; %#ok<AGROW>
+        outputIdx = [outputIdx find(ismember(sys.solverVars, outputVars))]; %#ok<AGROW>
     end
 
     graphComponents = pathGraphsFromQcqp( H_temp,Aineq_temp,Aeq_temp,Q_temp,l_temp );
@@ -172,7 +176,7 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
     end
 
     %% Assemble outputs
-    [sys, outputFORCES] = buildOutput( solverOutputs,solverVars,graphComponents,stages,sys,paramVars,yalmipParamMap );
+    [sys, outputFORCES] = buildOutput( sys, solverOutputs,graphComponents,stages,paramVars,yalmipParamMap );
     assembleStagesTime = toc;
     fprintf('   [OK, %5.1f sec]\n', assembleStagesTime);
 
@@ -216,8 +220,6 @@ function [sys, success] = optimizerFORCES( constraint,objective,codeoptions,para
     sys.outputFORCES = outputFORCES;
     sys.qcqpParams = qcqpParams;
     sys.standardParamValues = standardParamValues;
-    sys.solverVars = solverVars;
-    sys.parameters = parameters;
     sys.forcesParamMap = forcesParamMap;
     sys.codeoptions = codeoptions;
     sys.default_codeoptions = default_codeoptions;
@@ -261,7 +263,7 @@ end
 % HELPER FUNCTIONS
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-function [ sys,codeoptions,parameters,solverOutputs ] = sanitizeInputData( sys,codeoptions,parameters,solverOutputs, nArgIn,inputNames )
+function [ sys,codeoptions,solverOutputs ] = sanitizeInputData( sys,codeoptions,solverOutputs, nArgIn,inputNames )
 
     % We need all arguments
     switch nArgIn
@@ -285,7 +287,7 @@ function [ sys,codeoptions,parameters,solverOutputs ] = sanitizeInputData( sys,c
     end
 
     % We need parameters
-    if isempty(parameters)
+    if isempty(sys.parameters)
         error('FORCES PRO does not support problems without parameters.');
     end
 
@@ -348,13 +350,13 @@ function [ sys,codeoptions,parameters,solverOutputs ] = sanitizeInputData( sys,c
     end
 
     % Create missing parameter names
-    while numel(sys.paramNames) < numel(parameters)
+    while numel(sys.paramNames) < numel(sys.parameters)
         sys.paramNames{end+1} = sprintf('param%u', numel(sys.paramNames)+1);
     end
 
     % We allow single parameters --> wrap them in a cell array
-    if ~iscell(parameters) 
-        parameters = {parameters}; % put single param into cell array
+    if ~iscell(sys.parameters) 
+        sys.parameters = {sys.parameters}; % put single param into cell array
     end
 
     if ~iscell(solverOutputs)
@@ -478,7 +480,7 @@ function [ internalmodel,qpData ] = getQpAndModelFromYALMIP( constraint,objectiv
 end
 
 
-function [ sys,qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap,qpData ] = buildParamsAndQuadIneqs( parameters,sys,internalmodel,qpData )
+function [ sys,qcqpParams,Q,l,r,paramVars,yalmipParamMap,qpData ] = buildParamsAndQuadIneqs( sys,internalmodel,qpData )
 % Helper function that builds QCQp parameter list and recognises
 % quadratic inequalities
 
@@ -516,31 +518,29 @@ function [ sys,qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap,qpData ] = b
     paramVars = []; % YALMIP variables that are parameters
     yalmipParamMap = zeros(2,0); % 1st row: index of matrix with values,
     % 2nd row: index of element inside matrix
-    if ~isempty(parameters)
-        sys.paramSizes = zeros(numel(parameters),2);
-        for i=1:numel(parameters)
-            if ~isa(parameters{i}, 'sdpvar')
+    if ~isempty(sys.parameters)
+        sys.paramSizes = zeros(numel(sys.parameters),2);
+        for i=1:numel(sys.parameters)
+            if ~isa(sys.parameters{i}, 'sdpvar')
                 error('Parameters must be a SDPVAR or a cell array of SDPVARs.');
             end
 
             % store size for code generation
-            sys.paramSizes(i,:) = size(parameters{i});
+            sys.paramSizes(i,:) = size(sys.parameters{i});
 
             % find YALMIP variables that make up parameter
-            newParams = getvariables(parameters{i});
+            newParams = getvariables(sys.parameters{i});
             paramVars = [paramVars newParams]; %#ok<AGROW>
 
             % find element inside matrix (given by user) that contains value of
             % parameter
             for p=newParams
-                yalmipParamMap(:,end+1) = [i; find(getbasematrix(parameters{i},p),1)]; %#ok<AGROW>
+                yalmipParamMap(:,end+1) = [i; find(getbasematrix(sys.parameters{i},p),1)]; %#ok<AGROW>
             end
         end
 
         assert(length(paramVars) == size(yalmipParamMap,2));
-        sys.numParams = numel(parameters);
-    else
-        sys.numParams = 0;
+        sys.numParams = numel(sys.parameters);
     end
 
     quadIneq = zeros(2,0); % data structure for keeping track of (parametric) quadratic inequalities
@@ -847,8 +847,8 @@ function [ sys,qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap,qpData ] = b
     end
 
     % Before removing params, every real state can be recovered
-    solverVars = internalmodel.used_variables;
-    solverVars(removeIdx) = [];
+    sys.solverVars = internalmodel.used_variables;
+    sys.solverVars(removeIdx) = [];
 
     % Compute shifts of variables (to adjust parameters)
     shift = zeros(1,length(internalmodel.used_variables));
@@ -955,7 +955,7 @@ function [ sys,qcqpParams,Q,l,r,solverVars,paramVars,yalmipParamMap,qpData ] = b
     bounds_idx = [];
     for i=1:size(qpData.Aineq,1)
         vars = find(qpData.Aineq(i,:)); % variables used in inequality
-        if length(vars) == 1 && is(recover(solverVars(vars)),'linear')
+        if length(vars) == 1 && is(recover(sys.solverVars(vars)),'linear')
             relevantParams = findRelevantParams(i, 1:size(qpData.Aineq,2), size(qpData.Aineq), qcqpParams.Aineq);
             if isempty(relevantParams) % No parameters affecting LHS of inequality
                 if qpData.Aineq(i,vars) > 0 && qpData.ub(vars) == Inf % No bounds so far
@@ -1088,7 +1088,7 @@ function [] = checkQcqpForInfeasibility( qcqpParams,H,H_temp,Q,Q_temp,lb,ub )
 end
 
 
-function [ sys,outputFORCES ] = buildOutput( solverOutputs,solverVars,graphComponents,stages,sys,paramVars,yalmipParamMap )
+function [ sys,outputFORCES ] = buildOutput( sys,solverOutputs,graphComponents,stages,paramVars,yalmipParamMap )
 % Helper function that builds the output struct required for the FORCES
 % solver(s), an outputMap that allows to recover the wantend output
 % values from the solver output, an outputParamTable that allows the
@@ -1108,7 +1108,7 @@ function [ sys,outputFORCES ] = buildOutput( solverOutputs,solverVars,graphCompo
         sys.outputBase{i} = full(getbase(solverOutputs{i}));
         sys.outputSize{i} = size(solverOutputs{i});
         for j=1:length(outputVars)
-            idx = find(solverVars == outputVars(j),1);
+            idx = find(sys.solverVars == outputVars(j),1);
             if length(idx) == 1
                 [stage, state, component] = findVariableIndex(graphComponents,idx);
                 outputFORCES{component}(o(component)) = newOutput(sprintf('o_%u',o(component)), stage, state); %#ok<AGROW>
