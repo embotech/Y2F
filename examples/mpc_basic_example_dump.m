@@ -79,6 +79,7 @@ end
 % https://www.embotech.com/FORCES-Pro/User-Manual/Low-level-Interface/Solver-Options
 codeoptions = getOptions('simpleMPC_solver'); % give solver a name
 controller = optimizerFORCES(const, cost, codeoptions, X(:,1), U(:,1), {'xinit'}, {'u0'}, 'dump');
+%controller = optimizerFORCES(const, cost, codeoptions, X(:,1), U(:,1), {'xinit'}, {'u0'}, 'dump_anonymized');
 
 
 %% Store controller object into MAT file

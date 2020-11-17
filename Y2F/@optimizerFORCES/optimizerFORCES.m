@@ -53,7 +53,9 @@ function [self, success] = optimizerFORCES( constraint,objective,codeoptions,par
 %                       will be auto-generated.
 %       mode:           (optional) 'default' will generate a solver,
 %                       'dump' will only return a solver object without 
-%                       actually generating the solver
+%                       actually generating the solver,
+%                       'dump_anonymized' does the same as 'dump' and 
+%                       additionally applies some basic anonymization
 %
 %   Outputs:
 %       solver:         reference to OPTIMIZERFORCES object. Use this to
@@ -121,6 +123,12 @@ function [self, success] = optimizerFORCES( constraint,objective,codeoptions,par
     end
     [ self,solverOutputs ] = sanitizeInputData( self,solverOutputs, constraint,objective,inputNames );
     
+    if strcmpi( mode,'dump_anonymized' )
+        disp('Basic anonymization enabled.');
+        self = anonymizeNames( self );
+    end
+    
+    
     %% Call YALMIP and convert QP into FORCES format
     disp('This is Y2F (v0.1.19), the YALMIP interface of FORCES PRO.');
     disp('For more information visit https://github.com/embotech/y2f');
@@ -179,7 +187,7 @@ function [self, success] = optimizerFORCES( constraint,objective,codeoptions,par
     self.interfaceFunction = str2func(self.default_codeoptions.name);
 
     %% Generate solver using FORCESPRO (if requested)
-    if strcmp( mode,'dump' )
+    if strcmpi( mode,'dump' ) || strcmpi( mode,'dump_anonymized' )
         % only dump current controller
         success = 0;
         return;
@@ -340,6 +348,26 @@ function [ self,solverOutputs ] = sanitizeInputData( self,solverOutputs, constra
     while numel(self.outputNames) < numel(solverOutputs)
         self.outputNames{end+1} = sprintf('output%u', numel(self.outputNames)+1);
     end
+
+end
+
+
+function [ self ] = anonymizeNames( self )
+% Helper function to replace solver, parameter, and output names by 
+% generic ones.
+
+    % parameter names
+    for ii=1:length(self.paramNames)
+        self.paramNames{ii} = ['param',num2str(ii)];
+    end
+    
+    % output names
+    for ii=1:length(self.outputNames)
+        self.outputNames{ii} = ['output',num2str(ii)];
+    end
+    
+    % solver name
+    self.codeoptions.name = 'y2f_solver';
 
 end
 
