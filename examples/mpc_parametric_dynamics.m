@@ -103,7 +103,7 @@ for k = 1:kmax
         fprintf('Time step %2d: FORCES took %2d iterations and %5.3f ', k,  info.it, info.solvetime*1000);
         fprintf('milliseconds to solve the problem.\n');
     else
-        info
+        disp(info);
         error('Some problem in solver');
     end
     
