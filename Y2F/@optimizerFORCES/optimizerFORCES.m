@@ -1,4 +1,4 @@
-function [self, success] = optimizerFORCES( constraint,objective,codeoptions,parameters,solverOutputs,parameterNames,outputNames )
+function [self, success] = optimizerFORCES( constraint,objective,codeoptions,parameters,solverOutputs,parameterNames,outputNames,mode )
 %OPTIMIZERFORCES Generates a FORCES PRO solver from a YALMIP problem formulation
 %
 %   solver = OPTIMIZERFORCES(constraint,objective,codeoptions,parameters,solverOutputs)
@@ -51,6 +51,9 @@ function [self, success] = optimizerFORCES( constraint,objective,codeoptions,par
 %                       outputs that will, for example, be used in the
 %                       Simulink block. If names are not specified, they
 %                       will be auto-generated.
+%       mode:           (optional) 'default' will generate a solver,
+%                       'dump' will only return a solver object without 
+%                       actually generating the solver
 %
 %   Outputs:
 %       solver:         reference to OPTIMIZERFORCES object. Use this to
@@ -91,7 +94,10 @@ function [self, success] = optimizerFORCES( constraint,objective,codeoptions,par
     end
     if (nargin < 7)
         outputNames = {};
-    end    
+    end
+    if (nargin < 8) || isempty(mode)
+        mode = 'default';
+    end
 
     self = setupOptimizerForcesClass( codeoptions,parameters,parameterNames,outputNames );
     
@@ -172,9 +178,15 @@ function [self, success] = optimizerFORCES( constraint,objective,codeoptions,par
     
     self.interfaceFunction = str2func(self.default_codeoptions.name);
 
-    %% Generate solver using FORCESPRO
-    disp('Generating solver using FORCESPRO...')
-    success = buildSolver( self );
+    %% Generate solver using FORCESPRO (if requested)
+    if strcmp( mode,'dump' )
+        % only dump current controller
+        success = 0;
+        return;
+    else
+        disp('Generating solver using FORCESPRO...')
+        success = buildSolver( self );
+    end
 
 end
 
