@@ -667,7 +667,7 @@ function [ self,qpData,Q,l,r,paramVars,yalmipParamMap ] = buildParamsAndQuadIneq
                     % Check if variable is used in Aineq --> put in quad. ineq.
                     rows = find(qpData.Aineq(:,i));
                     for row=rows'
-                        [k,quadIneq,Q,l,r] = findOrCreateQuadraticInequality(row,quadIneq,Q,l,r);
+                        [k,quadIneq,Q,l,r] = findOrCreateQuadraticInequality(qpData,row,quadIneq,Q,l,r);
                         Q{k}(v_idx,v_idx) = qpData.Aineq(row,i);
                     end
 
@@ -711,7 +711,7 @@ function [ self,qpData,Q,l,r,paramVars,yalmipParamMap ] = buildParamsAndQuadIneq
                         % Check if variable is used in Aineq --> put in quad. ineq.
                         rows = find(qpData.Aineq(:,i));
                         for row=rows'
-                            [k,quadIneq,Q,l,r] = findOrCreateQuadraticInequality(row,quadIneq,Q,l,r);
+                            [k,quadIneq,Q,l,r] = findOrCreateQuadraticInequality(qpData,row,quadIneq,Q,l,r);
                             Q{k}(deps_idx(1),deps_idx(2)) = 0.5*qpData.Aineq(row,i);
                             Q{k}(deps_idx(2),deps_idx(1)) = 0.5*qpData.Aineq(row,i);
                         end
@@ -838,7 +838,7 @@ function [ self,qpData,Q,l,r,paramVars,yalmipParamMap ] = buildParamsAndQuadIneq
                 % Check inequalities
                 rows = find(qpData.Aineq(:,i));
                 for row=rows'
-                    [k,quadIneq,Q,l,r] = findOrCreateQuadraticInequality(row,quadIneq,Q,l,r);
+                    [k,quadIneq,Q,l,r] = findOrCreateQuadraticInequality(qpData,row,quadIneq,Q,l,r);
                     if v1_idx ~= v2_idx % make sure Q is symmetric
                         qcqpParams.Q(end+1) = newAdditiveQcqpParam(sub2ind(size(Q{k}),v1_idx,v2_idx),p_idx,k,0.5*qpData.Aineq(row,i));
                         qcqpParams.Q(end+1) = newAdditiveQcqpParam(sub2ind(size(Q{k}),v2_idx,v1_idx),p_idx,k,0.5*qpData.Aineq(row,i));
@@ -1017,7 +1017,7 @@ function [ self,qpData,Q,l,r,paramVars,yalmipParamMap ] = buildParamsAndQuadIneq
 end
 
 
-function [ k,quadIneq,Q,l,r ] = findOrCreateQuadraticInequality( rowIdx,quadIneq,Q,l,r )
+function [ k,quadIneq,Q,l,r ] = findOrCreateQuadraticInequality( qpData,rowIdx,quadIneq,Q,l,r )
 % Helper function to find/create quadratic inequalities
 %   Input:
 %       rowIdx      index of linear inequality (row in Aineq)
@@ -1035,8 +1035,8 @@ function [ k,quadIneq,Q,l,r ] = findOrCreateQuadraticInequality( rowIdx,quadIneq
         assert(length(id) == 1);
         k = quadIneq(2,id);
     else
-        Q{end+1} = spalloc(size(H,1),size(H,2),0);%zeros(size(H));
-        l(:,end+1) = spalloc(size(H,1),1,0); %zeros(size(H,1),1);
+        Q{end+1} = spalloc(size(qpData.H,1),size(qpData.H,2),0);
+        l(:,end+1) = spalloc(size(qpData.H,1),1,0);
         r(end+1) = 0;
         k = length(r);
         quadIneq(:,end+1) = [rowIdx;k];
