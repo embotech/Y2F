@@ -13,7 +13,7 @@ success = 0;
 solverName = self.default_codeoptions.name;
 
 % Check if FORCES solver has been generated
-if ~isfolder(solverName)
+if (exist(solverName,'dir') == 0)
     error('Solver ''%s'' has not been generated!', solverName)
 end
 
@@ -76,7 +76,6 @@ end
 set_param([library '/' block], 'FunctionName', [solverName '_simulinkBlock']);
 
 % Create mask to name input/output ports and add image
-
 iconDrawingString = 'image(''forcesprologo.jpg'', ''center'', ''on'')';
 for i=1:self.numParams
     iconDrawingString = sprintf('%s;port_label(''input'', %u, ''%s'')', iconDrawingString, i, self.paramNames{i});

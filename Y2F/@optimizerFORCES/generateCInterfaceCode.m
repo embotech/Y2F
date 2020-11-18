@@ -18,27 +18,27 @@ else
 end
 
 % Check if FORCES solver has been generated
-if ~isfolder(self.codeoptions{1}.name) && ~isfolder(solverName)
+if (exist(self.codeoptions{1}.name,'dir') == 0) && (exist(solverName,'dir') == 0)
     error('Solver ''%s'' has not been generated!', solverName)
 end
 
 % Make directories
-if ~isfolder(solverName)
+if (exist(solverName,'dir') == 0)
     mkdir(solverName)
 end
-if ~isfolder([solverName '/interface'])
-    mkdir([solverName '/interface'])
+if (exist([solverName,filesep,'interface'],'dir') == 0)
+    mkdir([solverName,filesep,'interface'])
 end
-if ~isfolder([solverName '/include'])
-    mkdir([solverName '/include'])
+if (exist([solverName,filesep,'include'],'dir') == 0)
+    mkdir([solverName,filesep,'include'])
 end
-if ~isfolder([solverName '/solvers'])
-    mkdir([solverName '/solvers'])
+if (exist([solverName,filesep,'solvers'],'dir') == 0)
+    mkdir([solverName,filesep,'solvers'])
 end
 
 % % Move "internal" solver(s) to new directory ("hide" them from the user)
 % for i=1:self.numSolvers
-%     copyfile(self.codeoptions{i}.name, [solverName '/solvers/' self.codeoptions{i}.name]);
+%     copyfile(self.codeoptions{i}.name, [solverName,filesep,'solvers',filesep,self.codeoptions{i}.name]);
 % end
 
 % Remove "internal" solver(s)

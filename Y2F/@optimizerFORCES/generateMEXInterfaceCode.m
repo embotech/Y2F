@@ -18,11 +18,11 @@ else
 end
 
 % Check if FORCES solver has been generated
-if ~isfolder(solverName)
+if (exist(solverName,'dir') == 0)
     error('Solver ''%s'' has not been generated!', solverName)
 end
 
-fileID = fopen([solverName '/interface/' solverName '_mex.c'],'w');
+fileID = fopen([solverName,filesep,'interface',filesep,solverName,'_mex.c'],'w');
 
 % Write standard comment
 fprintf(fileID, '/*\n This is an interface for %s that ',solverName);
