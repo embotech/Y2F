@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.19
+- Re-structured optimizerFORCES function
+- Added variant to only dump the solver object into a MAT file without generating code
+- Added option to perform some basic anonymization on the problem data
+
 ## 0.1.18
 - Added static keyword in variable declaration in generated interfaces and main solver
 - Added thread_local option in main solver file generation

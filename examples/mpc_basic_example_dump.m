@@ -1,8 +1,7 @@
 % Basic MPC example demonstrating the use of Yalmip to formulate MPC 
-% problems and FORCES to solve them very quickly.
-%
-% In this example, we will have the matrices A and B as parameters. This
-% often occurs when a system is (re-)linearized around an operating point.
+% problems and FORCES to solve them very quickly. This examples illustrates
+% how to dump a formulation into a MAT file before using that file to
+% actually generate the solver.
 %
 % Simple MPC - double integrator example for use with FORCES PRO
 % 
@@ -11,10 +10,9 @@
 %       s.t. x0 = x(t)
 %            x_i+1 = A*xi + B*ui  for i = 0...N-1
 %            xmin <= xi <= xmax   for i = 1...N
-%            umin <= ui <= umax   for i = 0...N-1
+%            umin <= ui <= umax   for i = 0...N
 %
-% Q, R, and P are suitable cost matrices and A and B are
-% parameters to the problem.
+% and P is solution of Ricatti eqn. from LQR problem
 %
 % Note: due to 1-based indexing in Matlab, we use 1...N+1 instead of 0...N
 %       as indices for state and input trajectory
@@ -28,8 +26,10 @@ clear; clc;
 
 %% MPC problem data
 
-% system dimensions
-nx = 2; nu = 1;
+% system matrices
+A = [1.1 1; 0 1];
+B = [1; 0.5];
+[nx,nu] = size(B);
 
 % horizon
 N = 10;
@@ -37,7 +37,12 @@ N = 10;
 % cost matrices
 Q = eye(2);
 R = eye(1);
-P = 10*Q; % we don't know A and B yet, so we cannot compute the LQR cost and use this instead
+if exist('dlqr', 'file')
+    [~,P] = dlqr(A,B,Q,R);
+else
+    fprintf('Did not find dlqr (part of the Control Systems Toolbox). Will use 10*Q for the terminal cost matrix.\n');
+    P = 10*Q;
+end
 
 % constraints
 umin = -0.5;     umax = 0.5;
@@ -46,15 +51,11 @@ xmin = [-5; -5]; xmax = [5; 5];
 %% Build MPC problem in Yalmip
 
 % Define variables
-x0 = sdpvar(nx,1); % initial state
-X = sdpvar(nx,N+1,'full'); % state trajectory: x1,...,xN (columns of X)
+X = sdpvar(nx,N+1,'full'); % state trajectory: x0,x1,...,xN (columns of X)
 U = sdpvar(nu,N,'full'); % input trajectory: u0,...,u_{N-1} (columns of U)
-A = sdpvar(nx,nx,'full'); % system matrix - parameter
-B = sdpvar(nx,nu,'full'); % input matrix - parameter
 
 % Initialize objective and constraints of the problem
-cost = 0;
-const = x0 == X(:,1);
+cost = 0; const = [];
 
 % Assemble MPC formulation
 for i = 1:N        
@@ -73,13 +74,23 @@ for i = 1:N
     const = [const, xmin <= X(:,i+1) <= xmax];
 end
 
-%% Create controller object (generates code)
+%% Create controller object without actually generating code
 % for a complete list of codeoptions, see 
 % https://www.embotech.com/FORCES-Pro/User-Manual/Low-level-Interface/Solver-Options
-codeoptions = getOptions('parametricDynamics_solver'); % give solver a name
-parameters = { x0, A, B };
-parameterNames = { 'xinit', 'Amatrix', 'Bmatrix' };
-controller = optimizerFORCES(const, cost, codeoptions, parameters, U(:,1), parameterNames, {'u0'} );
+codeoptions = getOptions('simpleMPC_solver'); % give solver a name
+controller = optimizerFORCES(const, cost, codeoptions, X(:,1), U(:,1), {'xinit'}, {'u0'}, 'dump');
+%controller = optimizerFORCES(const, cost, codeoptions, X(:,1), U(:,1), {'xinit'}, {'u0'}, 'dump_anonymized');
+
+
+%% Store controller object into MAT file
+save('mpcBasicExampleDump.mat','controller');
+% do not clear all variables as some are needed to run simulation
+clear('codeoptions','const','controller','cost','i','N','P','Q','R','U','X');
+
+
+%% Load dumped controller object and generate code
+load('mpcBasicExampleDump.mat');
+buildSolver(controller);
 
 
 %% Simulate
@@ -88,15 +99,10 @@ kmax = 30;
 X = zeros(nx,kmax+1); X(:,1) = x1;
 U = zeros(nu,kmax);
 problem.z1 = zeros(2*nx,1);
-
 for k = 1:kmax
     
-    % Set system matrices
-    A = [1.1 1; 0 1];
-    B = [1; 0.5];
-    
     % Evaluate controller function for parameters
-    [U(:,k),exitflag,info] = controller{ X(:,k), A, B };
+    [U(:,k),exitflag,info] = controller{ X(:,k) };
     
     % Always check the exitflag in case something went wrong in the solver
     if( exitflag == 1 )

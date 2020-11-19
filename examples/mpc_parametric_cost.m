@@ -123,7 +123,7 @@ for k = 1:kmax
             fprintf('milliseconds to solve the problem.\n');
         end
     else
-        info
+        disp(info);
         error('Some problem in solver');
     end
     

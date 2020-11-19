@@ -1,4 +1,4 @@
-function success = generateHelp( self )
+function [ success ] = generateHelp( self )
 %GENERATEHELP generates an m-file containing a description of the solver
 %
 % This file is part of the y2f project: http://github.com/embotech/y2f, 
@@ -119,10 +119,11 @@ else
     fprintf(mFileID, '%%\n');
 end
 
-
 fprintf(mFileID, '%% See also COPYING');
 
 % Close file
 fclose(mFileID);
 
 success = 1;
+
+end

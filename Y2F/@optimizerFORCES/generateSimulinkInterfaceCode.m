@@ -1,4 +1,4 @@
-function success = generateSimulinkInterfaceCode( self )
+function [ success ] = generateSimulinkInterfaceCode( self )
 %GENERATESIMULINKINTERFACECODE generates a C file with an S-function for
 %use in a Simulink model.
 %
@@ -18,11 +18,11 @@ else
 end
 
 % Check if FORCES solver has been generated
-if ~isdir(solverName)
+if (exist(solverName,'dir') == 0)
     error('Solver ''%s'' has not been generated!', solverName)
 end
 
-fileID = fopen([solverName '/interface/' solverName '_simulinkBlock.c'],'w');
+fileID = fopen([solverName,filesep,'interface',filesep,solverName,'_simulinkBlock.c'],'w');
 
 fprintf(fileID, '/*\n');
 fprintf(fileID, '%s : A fast customized optimization solver.\n',solverName);

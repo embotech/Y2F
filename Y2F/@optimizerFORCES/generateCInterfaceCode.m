@@ -1,4 +1,4 @@
-function success = generateCInterfaceCode( self )
+function [ success ] = generateCInterfaceCode( self )
 %GENERATECINTERFACECODE generates C code that will prepare the user-defined
 %parameters for the FORCES solver. It also assembles the correct outputs.
 %
@@ -18,27 +18,27 @@ else
 end
 
 % Check if FORCES solver has been generated
-if ~isdir(self.codeoptions{1}.name) && ~isdir(solverName)
+if (exist(self.codeoptions{1}.name,'dir') == 0) && (exist(solverName,'dir') == 0)
     error('Solver ''%s'' has not been generated!', solverName)
 end
 
 % Make directories
-if ~isdir(solverName)
+if (exist(solverName,'dir') == 0)
     mkdir(solverName)
 end
-if ~isdir([solverName '/interface'])
-    mkdir([solverName '/interface'])
+if (exist([solverName,filesep,'interface'],'dir') == 0)
+    mkdir([solverName,filesep,'interface'])
 end
-if ~isdir([solverName '/include'])
-    mkdir([solverName '/include'])
+if (exist([solverName,filesep,'include'],'dir') == 0)
+    mkdir([solverName,filesep,'include'])
 end
-if ~isdir([solverName '/solvers'])
-    mkdir([solverName '/solvers'])
+if (exist([solverName,filesep,'solvers'],'dir') == 0)
+    mkdir([solverName,filesep,'solvers'])
 end
 
 % % Move "internal" solver(s) to new directory ("hide" them from the user)
 % for i=1:self.numSolvers
-%     copyfile(self.codeoptions{i}.name, [solverName '/solvers/' self.codeoptions{i}.name]);
+%     copyfile(self.codeoptions{i}.name, [solverName,filesep,'solvers',filesep,self.codeoptions{i}.name]);
 % end
 
 % Remove "internal" solver(s)
@@ -590,7 +590,6 @@ for i=1:numel(self.outputBase) % every output has a base
     mapOffset = mapOffset + size(base,1);
 end
 
-
 fprintf(cFileID, '\treturn exitflag;\n');
 fprintf(cFileID, '}'); % end of mex-function
     
@@ -600,4 +599,3 @@ fclose(cFileID);
 success = 1;
 
 end
-

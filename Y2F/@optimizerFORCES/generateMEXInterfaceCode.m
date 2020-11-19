@@ -1,4 +1,4 @@
-function success = generateMEXInterfaceCode( self )
+function [ success ] = generateMEXInterfaceCode( self )
 %GENERATEMEXINTERFACECODE generates MEX C code that will prepare the
 %parameters for the FORCES solver. It also assembles the correct outputs.
 %
@@ -18,11 +18,11 @@ else
 end
 
 % Check if FORCES solver has been generated
-if ~isdir(solverName)
+if (exist(solverName,'dir') == 0)
     error('Solver ''%s'' has not been generated!', solverName)
 end
 
-fileID = fopen([solverName '/interface/' solverName '_mex.c'],'w');
+fileID = fopen([solverName,filesep,'interface',filesep,solverName,'_mex.c'],'w');
 
 % Write standard comment
 fprintf(fileID, '/*\n This is an interface for %s that ',solverName);
@@ -392,4 +392,3 @@ fclose(fileID);
 success = 1;
 
 end
-
