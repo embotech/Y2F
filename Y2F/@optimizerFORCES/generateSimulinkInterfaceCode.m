@@ -17,7 +17,7 @@ else
     solverName_constant = solverName;
 end
 
-% Check if FORCES solver has been generated
+% Check if FORCESPRO solver has been generated
 if (exist(solverName,'dir') == 0)
     error('Solver ''%s'' has not been generated!', solverName)
 end
@@ -35,7 +35,7 @@ fprintf(fileID, '#include "simstruc.h"\n');
 fprintf(fileID, '\n');
 fprintf(fileID, '/* SYSTEM INCLUDES FOR TIMING ------------------------------------------ */\n');
 fprintf(fileID, '\n');
-fprintf(fileID, '/* include FORCES functions and defs */\n');
+fprintf(fileID, '/* include FORCESPRO functions and defs */\n');
 fprintf(fileID, '#include "../include/%s.h"\n',solverName);
 fprintf(fileID, '\n');
 fprintf(fileID, '#if defined(MATLAB_MEX_FILE)\n');

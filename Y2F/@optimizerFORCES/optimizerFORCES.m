@@ -1,8 +1,8 @@
 function [self, success] = optimizerFORCES( constraint,objective,codeoptions,parameters,solverOutputs,parameterNames,outputNames,mode )
-%OPTIMIZERFORCES Generates a FORCES PRO solver from a YALMIP problem formulation
+%OPTIMIZERFORCES Generates a FORCESPRO solver from a YALMIP problem formulation
 %
 %   solver = OPTIMIZERFORCES(constraint,objective,codeoptions,parameters,solverOutputs)
-%   generates a solver using FORCES PRO that solves the specified problem
+%   generates a solver using FORCESPRO that solves the specified problem
 %   for given parameter values and returns the value of the specified
 %   outputs. The solver can be called  by indexing the returned OPTIMIZERFORCES
 %   object with the parameter values. The parameter values can be passed in
@@ -36,7 +36,7 @@ function [self, success] = optimizerFORCES( constraint,objective,codeoptions,par
 %   Inputs:
 %       constraint:     constraints in YALMIP format, see e.g. OPTIMIZER
 %       objective:      objective in YALMIP format, see e.g. OPTIMIZER
-%       codeoptions:    options for FORCES PRO solver, see GETOPTIONS
+%       codeoptions:    options for FORCESPRO solver, see GETOPTIONS
 %       parameters:     Single SDPVAR object or cell array of SDPVAR
 %                       objects that should be considered a parameter
 %       solverOutputs:  Single SDPVAR object or cell array of SDPVAR
@@ -108,7 +108,7 @@ function [self, success] = optimizerFORCES( constraint,objective,codeoptions,par
         return;
     end
 
-    disp('YALMIP-to-FORCES code generator')
+    disp('YALMIP-to-FORCESPRO code generator')
     disp('-------------------------------')
 
     % Check if YALMIP is installed
@@ -129,8 +129,8 @@ function [self, success] = optimizerFORCES( constraint,objective,codeoptions,par
     end
     
     
-    %% Call YALMIP and convert QP into FORCES format
-    disp('This is Y2F (v0.1.19), the YALMIP interface of FORCES PRO.');
+    %% Call YALMIP and convert QP into FORCESPRO format
+    disp('This is Y2F (v0.1.19), the YALMIP interface of FORCESPRO.');
     disp('For more information visit https://github.com/embotech/y2f');
     fprintf('\nUsing YALMIP to convert problem into QP...')
     
@@ -173,7 +173,7 @@ function [self, success] = optimizerFORCES( constraint,objective,codeoptions,par
     % backing up user-defined codeoptions
     self.default_codeoptions = self.codeoptions;
     
-    % set flag to let FORCES know that request came from Y2F
+    % set flag to let FORCESPRO know that request came from Y2F
     self.default_codeoptions.interface = 'y2f';
         
     self.codeoptions = cell(1,self.numSolvers);
@@ -268,7 +268,7 @@ function [ self,solverOutputs ] = sanitizeInputData( self,solverOutputs, constra
 
     % We need parameters
     if isempty(self.parameters)
-        error('FORCES PRO does not support problems without parameters.');
+        error('FORCESPRO does not support problems without parameters.');
     end
 
     % Read parameter names if they were passed along
@@ -1085,7 +1085,7 @@ function [ self ] = assembleStages( self,qpData,solverOutputs, Q,l,r,paramVars,y
     
     self.numSolvers = numel(self.stages);
     
-    %% Assemble the rest of the FORCES parameters
+    %% Assemble the rest of the FORCESPRO parameters
     % Fake a parameter for each solver if there are none (we need one for FORCES)
     self.solverHasParams = zeros(1,self.numSolvers);
     for i=1:self.numSolvers

@@ -7,13 +7,13 @@ function [stages, params, standardParamValues, forcesParamMap] = generateStagesF
 %                                   2nd row: index of element inside matrix
 %       
 %   Output:
-%       stages:                 FORCES stages
-%       params:                 FORCES parameters
-%       standardParamValues:    "standard" values for FORCES parameters. 
+%       stages:                 FORCESPRO stages
+%       params:                 FORCESPRO parameters
+%       standardParamValues:    "standard" values for FORCESPRO parameters. 
 %                               Not every element of the matrix has be 
 %                               covered by a QCQP parameter. Param values
 %                               get added to this value.
-%       forcesParamMap:         Map that maps FORCES parameters to parameter value matrices
+%       forcesParamMap:         Map that maps FORCESPRO parameters to parameter value matrices
 %       	.(param_name)(1,.):   index of element that's affected
 %           .(param_name)(2,.):   factor by which value gets multiplied
 %           .(param_name)(3,.):   matrix that contains value
@@ -346,7 +346,7 @@ end
     end
 
     function param = findRelevantQcqpParamsAndCreateDiagonalForcesParameter( stage, row_idx, fullMatrixSize, qcqpParams, qcqpParamIndices, param_name)
-    % Helper function to create diagonal FORCES parameters if necessary
+    % Helper function to create diagonal FORCESPRO parameters if necessary
     % Attention: standard value is not set by this function!
     % Do it after calling it with 'standardParamValues.(param.name) = ...'
     
@@ -359,8 +359,8 @@ end
         % param_local_idx(j) contains the (local) index of the element
         % influenced by this parameter
         
-        if any(relevant_params) % We have QCQP params --> create a FORCES param            
-            % Create FORCES param with standard value
+        if any(relevant_params) % We have QCQP params --> create a FORCESPRO param            
+            % Create FORCESPRO param with standard value
             param_id = sprintf('p_%u',p);
             params(p) = newParam(param_id, stage, param_name, 'diag');
             
@@ -380,7 +380,7 @@ end
     end
 
     function param = findRelevantQcqpParamsAndCreateSparseForcesParameter( stage, nonzero_idx, sparsityPattern, qcqpParams, qcqpParamIndices, param_name)
-    % Helper function to create sparse FORCES parameters if necessary
+    % Helper function to create sparse FORCESPRO parameters if necessary
     % Attention: standard value is not set by this function!
     % Do it after calling it with 'standardParamValues.(param.name) = ...'
     
@@ -392,8 +392,8 @@ end
         % param_local_idx(j) contains the (local) index of the element
         % influenced by this parameter
         
-        if any(relevant_params) % We have QCQP params --> create a FORCES param
-            % Create FORCES param
+        if any(relevant_params) % We have QCQP params --> create a FORCESPRO param
+            % Create FORCESPRO param
             param_id = sprintf('p_%u',p);
             params(p) = newParam(param_id, stage, param_name, 'sparse', full(sparsityPattern));
             
@@ -413,7 +413,7 @@ end
     end
 
     function param = findRelevantQcqpParamsAndCreateForcesParameter( stage, row_idx, col_idx, fullMatrixSize, qcqpParams, qcqpParamIndices, param_name, maps2mat)
-    % Helper function to create FORCES parameters if necessary
+    % Helper function to create FORCESPRO parameters if necessary
     
         param = [];
     
@@ -432,8 +432,8 @@ end
             param_local_idx(not_affected_params) = 0;
         end
         
-        if any(relevant_params) % We have QCQP params --> create a FORCES param            
-            % Create FORCES param with standard value
+        if any(relevant_params) % We have QCQP params --> create a FORCESPRO param            
+            % Create FORCESPRO param with standard value
             param_id = sprintf('p_%u',p);
             params(p) = newParam(param_id, stage, param_name);
             if nargin <= 7 % no maps2mat (we can't set standardParamValues for that case)
@@ -465,7 +465,7 @@ end
     end
 
 %     function createDiagonalCostParameter(stage, relevantParams, element_idx)
-%     % Helper function to create a FORCES parameters for a diagonal cost
+%     % Helper function to create a FORCESPRO parameters for a diagonal cost
 %         params(p) = newParam(sprintf('p_%u',p), stage, 'cost.H', 'diag');
 %         standardParamValues.(sprintf('p_%u',p)) = stages(stage).cost.H(logical(eye(length(element_idx)))); % only use diagonal
 %         stages(stage).cost.H = [];
