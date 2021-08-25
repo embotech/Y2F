@@ -1,11 +1,11 @@
 function [ success ] = generateMEXInterfaceCode( self )
 %GENERATEMEXINTERFACECODE generates MEX C code that will prepare the
-%parameters for the FORCES solver. It also assembles the correct outputs.
+%parameters for the FORCESPRO solver. It also assembles the correct outputs.
 %
 % This file is part of the y2f project: http://github.com/embotech/y2f, 
 % a project maintained by embotech under the MIT open-source license.
 %
-% (c) Gian Ulli and embotech AG, Zurich, Switzerland, 2013-2020.
+% (c) Gian Ulli and embotech AG, Zurich, Switzerland, 2013-2021.
 
 success = 0;
 
@@ -17,7 +17,7 @@ else
     solverName_constant = solverName;
 end
 
-% Check if FORCES solver has been generated
+% Check if FORCESPRO solver has been generated
 if (exist(solverName,'dir') == 0)
     error('Solver ''%s'' has not been generated!', solverName)
 end

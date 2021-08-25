@@ -5,14 +5,14 @@ function [ success ] = generateSimulinkBlock( self )
 % This file is part of the y2f project: http://github.com/embotech/y2f, 
 % a project maintained by embotech under the MIT open-source license.
 %
-% (c) Gian Ulli and embotech AG, Zurich, Switzerland, 2013-2020.
+% (c) Gian Ulli and embotech AG, Zurich, Switzerland, 2013-2021.
 
 success = 0;
 
 % Get solver name from option
 solverName = self.default_codeoptions.name;
 
-% Check if FORCES solver has been generated
+% Check if FORCESPRO solver has been generated
 if (exist(solverName,'dir') == 0)
     error('Solver ''%s'' has not been generated!', solverName)
 end
@@ -53,7 +53,7 @@ else % no library found
     fprintf(mFileID, '%% This function specifies that the Y2F library should appear in the\n');
     fprintf(mFileID, '%% Library Browser and be cached in the browser repository\n');
     fprintf(mFileID, 'Browser.Library = ''y2f_simulink_lib'';\n');
-    fprintf(mFileID, 'Browser.Name = ''Y2F FORCES PRO Solvers'';\n');
+    fprintf(mFileID, 'Browser.Name = ''Y2F FORCESPRO Solvers'';\n');
     fprintf(mFileID, 'blkStruct.Browser = Browser;\n');
     
     fclose(mFileID);

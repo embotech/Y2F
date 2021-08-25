@@ -1,7 +1,7 @@
 % Basic MPC example demonstrating the use of Yalmip to formulate MPC 
-% problems and FORCES to solve them very quickly.
+% problems and FORCESPRO to solve them very quickly.
 %
-% Simple MPC - double integrator example for use with FORCES PRO
+% Simple MPC - double integrator example for use with FORCESPRO
 % 
 %  min   xN'*P*xN + sum_{i=0}^{N-1} xi'*Q*xi + ui'*R*ui
 % xi,ui
@@ -18,7 +18,7 @@
 % This file is part of the y2f project: http://github.com/embotech/y2f, 
 % a project maintained by embotech under the MIT open-source license.
 %
-% (c) Gian Ulli and embotech AG, Zurich, Switzerland, 2013-2020.
+% (c) Gian Ulli and embotech AG, Zurich, Switzerland, 2013-2021.
 
 clear; clc;
 
@@ -90,7 +90,7 @@ for k = 1:kmax
     
     % Always check the exitflag in case something went wrong in the solver
     if( exitflag == 1 )
-        fprintf('Time step %2d: FORCES took %2d iterations and %5.3f ', k,  info.it, info.solvetime*1000);
+        fprintf('Time step %2d: FORCESPRO took %2d iterations and %5.3f ', k,  info.it, info.solvetime*1000);
         fprintf('milliseconds to solve the problem.\n');
     else
         info
