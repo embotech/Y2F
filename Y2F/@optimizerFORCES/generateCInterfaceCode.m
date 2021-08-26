@@ -276,11 +276,10 @@ fprintf(hFileID, '#endif\n\n');
 
 if self.numSolvers == 1
     fprintf(hFileID, '/* examine exitflag before using the result! */\n');
-    fprintf(hFileID, 'extern solver_int32_default %s_solve(%s_params *params, %s_output *output, %s_info *info, FILE *fs);\n\n', solverName, solverName, solverName, solverName);
 else
     fprintf(hFileID, '/* examine all of the %u exitflags before using the result! */\n', self.numSolvers);
-    fprintf(hFileID, 'extern solver_int32_default *%s_solve(%s_params *params, %s_output *output, %s_info *info, FILE *fs);\n\n', solverName, solverName, solverName, solverName);
 end
+fprintf(hFileID, 'extern void %s_solve(%s_params *params, %s_output *output, solver_int32_default *exitflag, %s_info *info, FILE *fs);\n\n', solverName, solverName, solverName, solverName);
 
 fprintf(hFileID, '#ifdef __cplusplus\n');
 fprintf(hFileID, '}\n');
@@ -343,9 +342,9 @@ end
     
 % Start of interface function
 if self.numSolvers == 1
-    fprintf(cFileID, 'extern solver_int32_default %s_solve(%s_params *params, %s_output *output, %s_info *info, FILE *fs) \n{\n', solverName, solverName, solverName, solverName);
+    fprintf(cFileID, 'extern void %s_solve(%s_params *params, %s_output *output, solver_int32_default* exitflag, %s_info *info, FILE *fs) \n{\n', solverName, solverName, solverName, solverName);
 else
-    fprintf(cFileID, 'extern solver_int32_default *%s_solve(%s_params *params, %s_output *output, %s_info *info, FILE *fs) \n{\n', solverName, solverName, solverName, solverName);
+    fprintf(cFileID, 'extern void %s_solve(%s_params *params, %s_output *output, solver_int32_default* exitflag, %s_info *info, FILE *fs) \n{\n', solverName, solverName, solverName, solverName);
 end
 
 % Arguments for solver(s)
@@ -361,12 +360,6 @@ for k=1:self.numSolvers
         fprintf(cFileID, '\t%s %s_info info_%u;\n\n',static_keyword, self.codeoptions{k}.name,k);
     end
 end
-if self.numSolvers == 1
-    fprintf(cFileID, '\tsolver_int32_default exitflag;\n');
-else
-    fprintf(cFileID, '\tsolver_int32_default exitflag[%u];\n',self.numSolvers);
-end
-
 
 fprintf(cFileID, '\t/* define variables */\n');
 fprintf(cFileID, '\tsolver_int32_default i;\n');
@@ -431,7 +424,7 @@ for k=1:self.numSolvers
 
 	fprintf(cFileID, '\t/* call solver #%u */\n',k);
     if self.numSolvers == 1
-        fprintf(cFileID, '\texitflag = %s_solve(&params_%u, &output_%u, &info_%u, fs );\n\n',solverName,k,k,k);
+        fprintf(cFileID, '\t*exitflag = %s_solve(&params_%u, &output_%u, &info_%u, fs );\n\n',solverName,k,k,k);
     else
         fprintf(cFileID, '\texitflag[%u] = %s_solve(&params_%u, &output_%u, &info_%u, fs );\n\n',k-1,solverName,k,k,k);
     end
@@ -590,7 +583,7 @@ for i=1:numel(self.outputBase) % every output has a base
     mapOffset = mapOffset + size(base,1);
 end
 
-fprintf(cFileID, '\treturn exitflag;\n');
+fprintf(cFileID, '\treturn;\n');
 fprintf(cFileID, '}'); % end of mex-function
     
 % Don't forget to close C file

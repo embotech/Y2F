@@ -68,7 +68,7 @@ fprintf(fileID, '\tint i;\n');
 if self.numSolvers == 1
     fprintf(fileID, '\tint exitflag;\n');
 else
-    fprintf(fileID, '\tint *exitflag;\n');
+    fprintf(fileID, '\tint exitflag[%u];\n', self.numSolvers);
 end
 fprintf(fileID, '\tconst char *fname;\n\n');
 
@@ -137,7 +137,12 @@ fprintf(fileID, '\t\trewind(fp);\n');
 fprintf(fileID, '\t#endif\n\n');
 
 fprintf(fileID, '\t/* call solver */\n');
-fprintf(fileID, '\texitflag = %s_solve(&params, &output, &info, fp );\n\n',solverName);
+if self.numSolvers == 1
+    fprintf(fileID, '\t%s_solve(&params, &output, &exitflag, &info, fp );\n\n',solverName);
+else
+    fprintf(fileID, '\t%s_solve(&params, &output, exitflag, &info, fp );\n\n',solverName);
+end
+    
 
 % Print output in console
 fprintf(fileID, '\t#if SET_PRINTLEVEL_%s > 0\n',solverName_constant);
