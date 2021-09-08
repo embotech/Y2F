@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.20
+- Fixed compilation issue with MinGW if more than one FORCESPRO solver is generated
+- Fixed potential memory access violation when returning more than one exitflag
+- Updated copyright year and spelling of FORCESPRO
+
 ## 0.1.19
 - Re-structured optimizerFORCES function
 - Added variant to only dump the solver object into a MAT file without generating code
