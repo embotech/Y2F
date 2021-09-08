@@ -228,7 +228,7 @@ fprintf(fileID, '	static %s_info info;\n',solverName);
 if self.numSolvers == 1
     fprintf(fileID, '	int exitflag;\n');
 else
-    fprintf(fileID, '	int* exitflag;\n');
+    fprintf(fileID, '	int exitflag[%u];\n',self.numSolvers);
 end
 
 fprintf(fileID, '\n');
@@ -254,7 +254,11 @@ fprintf(fileID, '#endif\n');
 fprintf(fileID, '\n');
 
 fprintf(fileID, '	/* Call solver */\n');
-fprintf(fileID, '	exitflag = %s_solve(&params, &output, &info, fp );\n',solverName);
+if self.numSolvers == 1
+    fprintf(fileID, '	%s_solve(&params, &output, &exitflag, &info, fp );\n',solverName);
+else
+    fprintf(fileID, '	%s_solve(&params, &output, exitflag, &info, fp );\n',solverName);
+end
 fprintf(fileID, '\n');
 
 fprintf(fileID, '#if SET_PRINTLEVEL_%s > 0\n',solverName_constant);
