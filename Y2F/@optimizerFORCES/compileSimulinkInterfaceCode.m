@@ -144,10 +144,11 @@ if exist( [cName '.c'], 'file' ) && exist( [simulinkName '.c'], 'file' )
                     legacyLibs, '-lIPHLPAPI.lib', '-largeArrayDims', '-silent');
             else
                 iphlpapi_path = ['-L"', matlabroot, '\sys\lcc64\lcc64\lib64"'];
+                prefixedLibs = getPrefixedLibs( [solverName '/lib/'],libs );
                 mex([solverName '/interface/' solverName '.obj'], ...
                     [solverName '/interface/' solverName '_simulinkBlock.obj'], ...
                     '-output', outputName, ...
-                    [solverName '/lib/', libs{:}], ...
+                    prefixedLibs{:}, ...
                     '-lIPHLPAPI.lib', iphlpapi_path, '-largeArrayDims', '-silent');
             end
         else
@@ -210,5 +211,24 @@ if exist( [cName '.c'], 'file' ) && exist( [simulinkName '.c'], 'file' )
 else
     fprintf('Could not find source file. This file is meant to be used for building from source code.');
 end
+
+end
+
+
+function [ prefixedLibs ] = getPrefixedLibs( prefix,libs )
+
+    nLibs = length(libs);
+    
+    switch ( nLibs )
+        case 0
+            error('libs cannot be empty');
+            
+        case 1
+            prefixedLibs = {[prefix, libs{1}]};
+            
+        otherwise
+            tmp = [repmat(prefix,nLibs,1),char(libs)];
+            prefixedLibs = cellstr(tmp)';
+    end
 
 end
