@@ -4,7 +4,7 @@ function [ success ] = generateHelp( self )
 % This file is part of the y2f project: http://github.com/embotech/y2f, 
 % a project maintained by embotech under the MIT open-source license.
 %
-% (c) Gian Ulli and embotech AG, Zurich, Switzerland, 2013-2021.
+% (c) Gian Ulli and embotech AG, Zurich, Switzerland, 2013-2023.
 
 success = 0;
 
@@ -85,36 +85,52 @@ if self.numSolvers == 1
     fprintf(mFileID, '%%   [OUTPUT, EXITFLAG, INFO] = %s(PARAMS) returns \n',solverName);
     fprintf(mFileID, '%%   additional information about the last iterate:\n');
     fprintf(mFileID, '%%       INFO.it        - number of iterations that lead to this result\n');
+    fprintf(mFileID, '%%       INFO.it2opt    - number of iterations that lead to optimality (branch and bound)\n');
     fprintf(mFileID, '%%       INFO.res_eq    - max. equality constraint residual\n');
-    fprintf(mFileID, '%%       INFO.res_ineq  - max. inequality constraint residual\n');
+    if isfield(self.default_codeoptions, 'solvemethod') && strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % extra field for ADMM
+        fprintf(mFileID, '%%       INFO.res_dual  - max. dual residual\n');
+    else
+        fprintf(mFileID, '%%       INFO.res_ineq  - max. inequality constraint residual\n');
+    end
     fprintf(mFileID, '%%       INFO.pobj      - primal objective\n');
     fprintf(mFileID, '%%       INFO.dobj      - dual objective\n');
     fprintf(mFileID, '%%       INFO.dgap      - duality gap := pobj - dobj\n');
     fprintf(mFileID, '%%       INFO.rdgap     - relative duality gap := |dgap / pobj|\n');
-    fprintf(mFileID, '%%       INFO.mu        - duality measure\n');
-    fprintf(mFileID, '%%       INFO.sigma     - centering parameter\n');
-    fprintf(mFileID, '%%       INFO.lsit_aff  - iterations of affine line search\n');
-    fprintf(mFileID, '%%       INFO.lsit_cc   - iterations of line search (combined direction)\n');
-    fprintf(mFileID, '%%       INFO.step_aff  - step size (affine direction)\n');
-    fprintf(mFileID, '%%       INFO.step_cc   - step size (centering direction)\n');
+    if ~isfield(self.default_codeoptions, 'solvemethod') || ~strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % not for ADMM
+        fprintf(mFileID, '%%       INFO.mu        - duality measure\n');
+        fprintf(mFileID, '%%       INFO.muaff     - duality measure (after affine step)\n');
+        fprintf(mFileID, '%%       INFO.sigma     - centering parameter\n');
+        fprintf(mFileID, '%%       INFO.lsit_aff  - iterations of affine line search\n');
+        fprintf(mFileID, '%%       INFO.lsit_cc   - iterations of line search (combined direction)\n');
+        fprintf(mFileID, '%%       INFO.step_aff  - step size (affine direction)\n');
+        fprintf(mFileID, '%%       INFO.step_cc   - step size (centering direction)\n');
+    end
     fprintf(mFileID, '%%       INFO.solvetime - Time needed for solve (wall clock time)\n');
     fprintf(mFileID, '%%\n');
 else
     fprintf(mFileID, '%%   [OUTPUT, EXITFLAGS, INFO] = %s(PARAMS) returns \n',solverName);
     fprintf(mFileID, '%%   additional information about the last iterate of the i-th solver:\n');
     fprintf(mFileID, '%%       INFO(i).it        - number of iterations that lead to this result\n');
+    fprintf(mFileID, '%%       INFO(i).it2opt    - number of iterations that lead to optimality (branch and bound)\n');
     fprintf(mFileID, '%%       INFO(i).res_eq    - max. equality constraint residual\n');
-    fprintf(mFileID, '%%       INFO(i).res_ineq  - max. inequality constraint residual\n');
+    if isfield(self.default_codeoptions, 'solvemethod') && strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % extra field for ADMM
+        fprintf(mFileID, '%%       INFO(i).res_dual  - max. dual residual\n');
+    else
+        fprintf(mFileID, '%%       INFO(i).res_ineq  - max. inequality constraint residual\n');
+    end
     fprintf(mFileID, '%%       INFO(i).pobj      - primal objective\n');
     fprintf(mFileID, '%%       INFO(i).dobj      - dual objective\n');
     fprintf(mFileID, '%%       INFO(i).dgap      - duality gap := pobj - dobj\n');
     fprintf(mFileID, '%%       INFO(i).rdgap     - relative duality gap := |dgap / pobj|\n');
-    fprintf(mFileID, '%%       INFO(i).mu        - duality measure\n');
-    fprintf(mFileID, '%%       INFO(i).sigma     - centering parameter\n');
-    fprintf(mFileID, '%%       INFO(i).lsit_aff  - iterations of affine line search\n');
-    fprintf(mFileID, '%%       INFO(i).lsit_cc   - iterations of line search (combined direction)\n');
-    fprintf(mFileID, '%%       INFO(i).step_aff  - step size (affine direction)\n');
-    fprintf(mFileID, '%%       INFO(i).step_cc   - step size (centering direction)\n');
+    if ~isfield(self.default_codeoptions, 'solvemethod') || ~strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % not for ADMM
+        fprintf(mFileID, '%%       INFO(i).mu        - duality measure\n');
+        fprintf(mFileID, '%%       INFO(i).muaff     - duality measure (after affine step)\n');
+        fprintf(mFileID, '%%       INFO(i).sigma     - centering parameter\n');
+        fprintf(mFileID, '%%       INFO(i).lsit_aff  - iterations of affine line search\n');
+        fprintf(mFileID, '%%       INFO(i).lsit_cc   - iterations of line search (combined direction)\n');
+        fprintf(mFileID, '%%       INFO(i).step_aff  - step size (affine direction)\n');
+        fprintf(mFileID, '%%       INFO(i).step_cc   - step size (centering direction)\n');
+    end
     fprintf(mFileID, '%%       INFO(i).solvetime - Time needed for solve (wall clock time)\n');
     fprintf(mFileID, '%%\n');
 end

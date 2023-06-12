@@ -5,7 +5,7 @@ function partition = findPathPartition( G )
 % This file is part of the y2f project: http://github.com/embotech/y2f, 
 % a project maintained by embotech under the MIT open-source license.
 %
-% (c) Gian Ulli and embotech AG, Zurich, Switzerland, 2013-2021.
+% (c) Gian Ulli and embotech AG, Zurich, Switzerland, 2013-2023.
 
 if G.n == 1
     partition = G;
@@ -19,6 +19,9 @@ deg = sum(G.adjMatrix);
 [~,I] = sort(deg);
 indicies = indicies(I);
 
+% transpose matrix for faster index access
+G_adjMatrix = G.adjMatrix';
+
 % Start path partitioning with every vertices and compare number of subsets
 best_vertices = {};
 min_cost = 0;
@@ -26,12 +29,12 @@ for i=indicies
     % Path partitioning ("Algorithm 1" in the thesis)
     v = i;
     vertices = {[G.vertices{v}]};
-    remaining_v = ones(1,G.n);
-    remaining_v(v) = 0;
+    remaining_v = ones(G.n,1,'logical');
+    remaining_v(v) = false;
     while any(remaining_v)
-        next_v = find(any(G.adjMatrix(v,:),1) & remaining_v);
+        next_v = find(any(G_adjMatrix(:,v),2) & remaining_v)';
         vertices{end+1} = [G.vertices{next_v}];
-        remaining_v(next_v) = 0;
+        remaining_v(next_v') = false;
         v = next_v;
     end
     

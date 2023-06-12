@@ -3,6 +3,7 @@
 This project provides a simple MATLAB interface that connects [YALMIP](http://users.isy.liu.se/johanl/yalmip/pmwiki.php?n=Main.WhatIsYALMIP)
 with [FORCESPRO](https://www.embotech.com/FORCES-Pro). It combines YALMIP's intuitiveness with the high efficiency of FORCESPRO for rapid development.
 
+
 ## Installation
 
 Simply download the code to the desired location and add the `Y2F` folder to your [MATLAB search path](http://ch.mathworks.com/help/matlab/ref/addpath.html). 
@@ -10,6 +11,7 @@ Simply download the code to the desired location and add the `Y2F` folder to you
 The Y2F interface requires a working YALMIP installation. See [https://yalmip.github.io/tutorial/installation/](https://yalmip.github.io/tutorial/installation/) for instructions on how to install YALMIP.
 
 The code has been tested with YALMIP release 20150919. Older versions might work but have not been tested.
+
 
 ## Example Usage
 
@@ -63,6 +65,22 @@ u0 = controller{x0};
 
 The code is licensed under the MIT License. For more information see LICENSE file.
 
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) file.
+
+
+## Releases
+
+The following Y2F versions have been released since 2021.
+
+| Y2F Version       | Release Date      | Compatible FORCESPRO Versions |
+| ----------------- | ----------------- | ----------------------------- |
+| 0.2.0             | Jun 12, 2023      | 6.2.0 onwards                 |
+| 0.1.20            | Sep 8, 2021       | 5.0.0 - 6.1.0 [1]             |
+| <= 0.1.19         | <= 2020           |                               |
+
+[1] In order to use Y2F 0.1.20 with FORCESPRO 6.2.0 or higher, you need to 
+manually set ``codeoptions.legacy_interface = 1`` when generating a
+FORCESPRO solver.

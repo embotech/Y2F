@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.0
+- Added coder interface support
+- Fixed solver building issues
+
 ## 0.1.20
 - Fixed compilation issue with MinGW if more than one FORCESPRO solver is generated
 - Fixed potential memory access violation when returning more than one exitflag

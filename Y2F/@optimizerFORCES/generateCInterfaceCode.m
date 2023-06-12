@@ -5,7 +5,7 @@ function [ success ] = generateCInterfaceCode( self )
 % This file is part of the y2f project: http://github.com/embotech/y2f, 
 % a project maintained by embotech under the MIT open-source license.
 %
-% (c) Gian Ulli and embotech AG, Zurich, Switzerland, 2013-2021.
+% (c) Gian Ulli and embotech AG, Zurich, Switzerland, 2013-2023.
 
 success = 0;
 
@@ -149,12 +149,12 @@ if self.numSolvers == 1
     fprintf(hFileID, '\t/* iteration number */\n');
     fprintf(hFileID, '\tsolver_int32_default it;\n\n');
 
-	fprintf(hFileID, '\t/* number of iterations needed to optimality (branch-and-bound) */\n');
-	fprintf(hFileID, '\tsolver_int32_default it2opt;\n\n');
-	
+    fprintf(hFileID, '\t/* number of iterations needed to optimality (branch-and-bound) */\n');
+    fprintf(hFileID, '\tsolver_int32_default it2opt;\n\n');
+    
     fprintf(hFileID, '\t/* inf-norm of equality constraint residuals */\n');
     fprintf(hFileID, '\t%s_float res_eq;\n\n',solverName);
-	
+    
     if isfield(self.default_codeoptions, 'solvemethod') && strcmpi(self.default_codeoptions.solvemethod, 'ADMM') % extra field for ADMM
         fprintf(hFileID, '\t/* inf-norm of dual residual */\n');
         fprintf(hFileID, '\t%s_float res_dual;\n\n',solverName);
@@ -165,13 +165,13 @@ if self.numSolvers == 1
 
     fprintf(hFileID, '\t/* primal objective */\n');
     fprintf(hFileID, '\t%s_float pobj;\n\n',solverName);
-	
+    
     fprintf(hFileID, '\t/* dual objective */\n');
     fprintf(hFileID, '\t%s_float dobj;\n\n',solverName);
 
     fprintf(hFileID, '\t/* duality gap := pobj - dobj */\n');
     fprintf(hFileID, '\t%s_float dgap;\n\n',solverName);
-	
+    
     fprintf(hFileID, '\t/* relative duality gap := |dgap / pobj | */\n');
     fprintf(hFileID, '\t%s_float rdgap;\n\n',solverName);
 
@@ -198,8 +198,8 @@ if self.numSolvers == 1
         fprintf(hFileID, '\t%s_float step_cc;\n\n',solverName);
     end
 
-	fprintf(hFileID, '\t/* solvertime */\n');
-	fprintf(hFileID, '\t%s_float solvetime;\n\n',solverName);
+    fprintf(hFileID, '\t/* solvertime */\n');
+    fprintf(hFileID, '\t%s_float solvetime;\n\n',solverName);
 
     fprintf(hFileID, '} %s_info;\n\n\n',solverName);
 else
@@ -212,9 +212,9 @@ else
     fprintf(hFileID, '\t/* iteration number */\n');
     fprintf(hFileID, '\tsolver_int32_default it[%u];\n\n',self.numSolvers);
 
-	fprintf(hFileID, '\t/* number of iterations needed to optimality (branch-and-bound) */\n');
-	fprintf(hFileID, '\tsolver_int32_default it2opt[%u];\n\n',self.numSolvers);
-	
+    fprintf(hFileID, '\t/* number of iterations needed to optimality (branch-and-bound) */\n');
+    fprintf(hFileID, '\tsolver_int32_default it2opt[%u];\n\n',self.numSolvers);
+    
     fprintf(hFileID, '\t/* inf-norm of equality constraint residuals */\n');
     fprintf(hFileID, '\t%s_float res_eq[%u];\n\n',solverName,self.numSolvers);
     
@@ -228,13 +228,13 @@ else
 
     fprintf(hFileID, '\t/* primal objective */\n');
     fprintf(hFileID, '\t%s_float pobj[%u];\n\n',solverName,self.numSolvers);
-	
+    
     fprintf(hFileID, '\t/* dual objective */\n');
     fprintf(hFileID, '\t%s_float dobj[%u];\n\n',solverName,self.numSolvers);
 
     fprintf(hFileID, '\t/* duality gap := pobj - dobj */\n');
     fprintf(hFileID, '\t%s_float dgap[%u];\n\n',solverName,self.numSolvers);
-	
+    
     fprintf(hFileID, '\t/* relative duality gap := |dgap / pobj | */\n');
     fprintf(hFileID, '\t%s_float rdgap[%u];\n\n',solverName,self.numSolvers);
 
@@ -261,8 +261,8 @@ else
         fprintf(hFileID, '\t%s_float step_cc[%u];\n\n',solverName,self.numSolvers);
     end
 
-	fprintf(hFileID, '\t/* solvertime */\n');
-	fprintf(hFileID, '\t%s_float solvetime[%u];\n\n',solverName,self.numSolvers);
+    fprintf(hFileID, '\t/* solvertime */\n');
+    fprintf(hFileID, '\t%s_float solvetime[%u];\n\n',solverName,self.numSolvers);
 
     fprintf(hFileID, '} %s_info;\n\n\n',solverName);
 end
@@ -299,6 +299,7 @@ fprintf(cFileID, '*/ \n\n');
 fprintf(cFileID, '#include "../include/%s.h"\n',solverName);
 for k=1:self.numSolvers
     fprintf(cFileID, '#include "../include/%s.h"\n',self.codeoptions{k}.name);
+    fprintf(cFileID, '#include "../include/%s_memory.h"\n',self.codeoptions{k}.name);
 end
 fprintf(cFileID, '#include <stdio.h>\n\n');
 
@@ -353,11 +354,13 @@ for k=1:self.numSolvers
     if ~self.solverIsBinary(k) % no binary variables
         fprintf(cFileID, '\t%s %s_params params_%u;\n',static_keyword, self.codeoptions{k}.name,k);
         fprintf(cFileID, '\t%s %s_output output_%u;\n',static_keyword, self.codeoptions{k}.name,k);
-        fprintf(cFileID, '\t%s %s_info info_%u;\n\n',static_keyword, self.codeoptions{k}.name,k);
+        fprintf(cFileID, '\t%s %s_info info_%u;\n',static_keyword, self.codeoptions{k}.name,k);
+        fprintf(cFileID, '\t%s %s_mem * mem_%u;\n\n',static_keyword, self.codeoptions{k}.name,k);
     else
         fprintf(cFileID, '\t%s %s_binaryparams params_%u;\n',static_keyword, self.codeoptions{k}.name,k);
         fprintf(cFileID, '\t%s %s_binaryoutput output_%u;\n',static_keyword, self.codeoptions{k}.name,k);
-        fprintf(cFileID, '\t%s %s_info info_%u;\n\n',static_keyword, self.codeoptions{k}.name,k);
+        fprintf(cFileID, '\t%s %s_info info_%u;\n',static_keyword, self.codeoptions{k}.name,k);
+        fprintf(cFileID, '\t%s %s_mem * mem_%u;\n\n',static_keyword, self.codeoptions{k}.name,k);
     end
 end
 
@@ -371,7 +374,7 @@ for k=1:self.numSolvers
     fprintf(cFileID, '\t/*Assigning parameter values of solver #%u*/\n',k);
     solverName = self.codeoptions{k}.name;
     
-	% Set FORCESPRO parameter values
+    % Set FORCESPRO parameter values
     fprintf(cFileID, '\t/*Assigning parameter values of solver #%u*/\n',k);
     if self.solverHasParams(k) % otherwise there is fake one
         problem = self.standardParamValues{k};
@@ -422,11 +425,16 @@ for k=1:self.numSolvers
         end
     end
 
-	fprintf(cFileID, '\t/* call solver #%u */\n',k);
+    fprintf(cFileID, '\t/* initialize memory #%u */\n',k);
+    fprintf(cFileID, '\tif (mem_%u == NULL)\n\t{\n',k);
+    fprintf(cFileID, '\tmem_%u = %s_internal_mem(0);\n',k,solverName);
+    fprintf(cFileID, '\t}\n');
+
+    fprintf(cFileID, '\t/* call solver #%u */\n',k);
     if self.numSolvers == 1
-        fprintf(cFileID, '\t*exitflag = %s_solve(&params_%u, &output_%u, &info_%u, fs );\n\n',solverName,k,k,k);
+        fprintf(cFileID, '\t*exitflag = %s_solve(&params_%u, &output_%u, &info_%u, mem_%u, fs );\n\n',solverName,k,k,k,k);
     else
-        fprintf(cFileID, '\texitflag[%u] = %s_solve(&params_%u, &output_%u, &info_%u, fs );\n\n',k-1,solverName,k,k,k);
+        fprintf(cFileID, '\texitflag[%u] = %s_solve(&params_%u, &output_%u, &info_%u, mem_%u, fs );\n\n',k-1,solverName,k,k,k,k);
     end
     
     % Diagnostics

@@ -18,7 +18,7 @@
 % This file is part of the y2f project: http://github.com/embotech/y2f, 
 % a project maintained by embotech under the MIT open-source license.
 %
-% (c) Gian Ulli and embotech AG, Zurich, Switzerland, 2013-2021.
+% (c) Gian Ulli and embotech AG, Zurich, Switzerland, 2013-2023.
 
 clear; clc;
 
@@ -74,7 +74,7 @@ end
 
 %% Create controller object (generates code)
 % for a complete list of codeoptions, see 
-% https://www.embotech.com/FORCES-Pro/User-Manual/Low-level-Interface/Solver-Options
+% https://forces.embotech.com/Documentation/solver_options/index.html
 codeoptions = getOptions('simpleMPC_solver'); % give solver a name
 controller = optimizerFORCES(const, cost, codeoptions, X(:,1), U(:,1), {'xinit'}, {'u0'});
 

@@ -18,7 +18,7 @@
 % This file is part of the y2f project: http://github.com/embotech/y2f, 
 % a project maintained by embotech under the MIT open-source license.
 %
-% (c) Gian Ulli and embotech AG, Zurich, Switzerland, 2013-2021.
+% (c) Gian Ulli and embotech AG, Zurich, Switzerland, 2013-2023.
 
 clear; clc;
 
@@ -70,10 +70,12 @@ end
 
 %% Create controller object (generates code)
 % for a complete list of codeoptions, see 
-% https://www.embotech.com/FORCES-Pro/User-Manual/Low-level-Interface/Solver-Options
+% https://forces.embotech.com/Documentation/solver_options/index.html
 codeoptions = getOptions('simpleMPC_solver_ADMM'); % give solver a name
 codeoptions.solvemethod = 'ADMM'; % use ADMM as solve method
 codeoptions.maxit = 1000;
+codeoptions.ADMMrho = 6;
+
 controller = optimizerFORCES(const, cost, codeoptions, xinit, U(:,1), {'xinit'}, {'u0'});
 
 
@@ -93,7 +95,7 @@ for k = 1:kmax
         fprintf('Time step %2d: FORCESPRO took %2d iterations and %5.3f ', k,  info.it, info.solvetime*1000);
         fprintf('milliseconds to solve the problem.\n');
     else
-        info
+        disp(info);
         error('Some problem in solver');
     end
     
