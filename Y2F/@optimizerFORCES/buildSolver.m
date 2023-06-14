@@ -9,7 +9,7 @@ function [ success ] = buildSolver( self )
 
     % ensure minimum FORCESPRO version
     [version, ~] = FORCESversion();
-    reqVersion = '6.1.0';
+    reqVersion = '6.2.0';
     if (~satisfiesMinimalVersion(version, reqVersion))
         error(['Y2F requires FORCESPRO v', reqVersion ,' or higher (installed version: v', version, ')']);
     end
