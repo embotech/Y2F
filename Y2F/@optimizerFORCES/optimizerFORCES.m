@@ -130,7 +130,7 @@ function [self, success] = optimizerFORCES( constraint,objective,codeoptions,par
     
     
     %% Call YALMIP and convert QP into FORCESPRO format
-    disp('This is Y2F (v0.1.20), the YALMIP interface of FORCESPRO.');
+    disp('This is Y2F (v0.2.0), the YALMIP interface of FORCESPRO.');
     disp('For more information visit https://github.com/embotech/y2f');
     fprintf('\nUsing YALMIP to convert problem into QP...')
     
